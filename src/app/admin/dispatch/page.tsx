@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { useApp } from "@/context/AppContext";
-import { formatNaira, getTimeAgo, cn } from "@/lib/utils";
+import { formatNaira, cn } from "@/lib/utils";
 import { showToast } from "@/components/ui/Toast";
 import { Order, Rider } from "@/lib/types";
 
@@ -170,7 +170,7 @@ export default function DispatchPage() {
                               {order.items.length} item{order.items.length !== 1 ? "s" : ""}
                             </span>
                             <span className="text-[11px] text-[var(--muted-foreground)]">
-                              {getTimeAgo(order.createdAt)}
+                              {order.createdAtLabel ?? "Just now"}
                             </span>
                           </div>
                         </div>

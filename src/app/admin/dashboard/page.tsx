@@ -17,7 +17,7 @@ import DispatchMap from "@/components/dashboard/DispatchMap";
 import PerformanceChart from "@/components/dashboard/PerformanceChart";
 import CreateOrderModal from "@/components/orders/CreateOrderModal";
 import { mockDailySummary, mockOrders } from "@/lib/mock-data";
-import { formatNaira, getGreeting, getTimeAgo } from "@/lib/utils";
+import { formatNaira, getGreeting } from "@/lib/utils";
 import { useApp } from "@/context/AppContext";
 import { showToast } from "@/components/ui/Toast";
 
@@ -175,7 +175,7 @@ export default function DashboardPage() {
                   </td>
                   <td className="px-5 py-3">
                     <p className="text-[12px] text-[var(--muted-foreground)]">
-                      {getTimeAgo(order.createdAt)}
+                      {order.createdAtLabel ?? "Just now"}
                     </p>
                   </td>
                   <td className="px-5 py-3 text-right">

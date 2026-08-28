@@ -34,6 +34,12 @@ export interface Order {
   updatedAt: string;
   estimatedDelivery?: string;
   timeline: TimelineEvent[];
+  /**
+   * Deterministic display label (e.g. "12 min ago") used instead of computing
+   * relative time from the live clock at render time. Prevents server/client
+   * hydration mismatches for mock data.
+   */
+  createdAtLabel?: string;
 }
 
 export interface TimelineEvent {
@@ -82,6 +88,11 @@ export interface Customer {
   lastOrderDate: string;
   status: "active" | "inactive";
   joinDate: string;
+  /**
+   * Deterministic display label (e.g. "5 days ago") used instead of computing
+   * relative time from the live clock at render time.
+   */
+  lastOrderDateLabel?: string;
 }
 
 export interface Notification {
@@ -91,6 +102,8 @@ export interface Notification {
   message: string;
   timestamp: string;
   read: boolean;
+  /** Deterministic display label (e.g. "12 min ago") for hydration-safe rendering. */
+  timestampLabel?: string;
 }
 
 export interface AnalyticsData {

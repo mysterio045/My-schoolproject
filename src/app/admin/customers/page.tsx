@@ -17,7 +17,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import { formatNaira, getTimeAgo, cn } from "@/lib/utils";
+import { formatNaira, cn } from "@/lib/utils";
 import { Customer } from "@/lib/types";
 
 const ITEMS_PER_PAGE = 8;
@@ -224,7 +224,7 @@ export default function CustomersPage() {
                     </td>
                     <td className="px-5 py-3">
                       <p className="text-[12px] text-[var(--muted-foreground)]">
-                        {getTimeAgo(customer.lastOrderDate)}
+                        {customer.lastOrderDateLabel ?? "Today"}
                       </p>
                     </td>
                     <td className="px-5 py-3">
@@ -350,7 +350,7 @@ export default function CustomersPage() {
                 </div>
                 <div>
                   <p className="text-[var(--muted-foreground)]">Last Order</p>
-                  <p className="font-medium text-[var(--foreground)]">{getTimeAgo(customer.lastOrderDate)}</p>
+                  <p className="font-medium text-[var(--foreground)]">{customer.lastOrderDateLabel ?? "Today"}</p>
                 </div>
               </div>
 
@@ -537,7 +537,7 @@ export default function CustomersPage() {
                         </p>
                         <p className="text-[11px] text-[var(--muted-foreground)] truncate">
                           {order.items.length} item{order.items.length > 1 ? "s" : ""} —{" "}
-                          {getTimeAgo(order.createdAt)}
+                          {order.createdAtLabel ?? "Just now"}
                         </p>
                       </div>
                       <div className="ml-3 shrink-0">

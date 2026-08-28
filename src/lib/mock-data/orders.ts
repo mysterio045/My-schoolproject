@@ -20,6 +20,7 @@ export const mockOrders: Order[] = [
     riderId: "R-001",
     riderName: "Muhammad Abdullahi",
     createdAt: minsAgo(35),
+    createdAtLabel: "35 min ago",
     updatedAt: minsAgo(12),
     estimatedDelivery: minsAgo(-15),
     timeline: [
@@ -48,6 +49,7 @@ export const mockOrders: Order[] = [
     riderId: null,
     riderName: null,
     createdAt: minsAgo(20),
+    createdAtLabel: "20 min ago",
     updatedAt: minsAgo(15),
     timeline: [
       { status: "pending", timestamp: minsAgo(20), label: "Order Placed" },
@@ -72,6 +74,7 @@ export const mockOrders: Order[] = [
     riderId: "R-003",
     riderName: "Abdulrahman Musa",
     createdAt: minsAgo(50),
+    createdAtLabel: "50 min ago",
     updatedAt: minsAgo(5),
     timeline: [
       { status: "pending", timestamp: minsAgo(50), label: "Order Placed" },
@@ -97,6 +100,7 @@ export const mockOrders: Order[] = [
     riderId: "R-002",
     riderName: "Usman Ibrahim",
     createdAt: hrsAgo(1.5),
+    createdAtLabel: "1 hr ago",
     updatedAt: minsAgo(25),
     timeline: [
       { status: "pending", timestamp: hrsAgo(1.5), label: "Order Placed" },
@@ -124,6 +128,7 @@ export const mockOrders: Order[] = [
     riderId: "R-004",
     riderName: "Sadiq Bello",
     createdAt: hrsAgo(2),
+    createdAtLabel: "2 hrs ago",
     updatedAt: hrsAgo(1.2),
     timeline: [
       { status: "pending", timestamp: hrsAgo(2), label: "Order Placed" },
@@ -152,6 +157,7 @@ export const mockOrders: Order[] = [
     riderId: "R-005",
     riderName: "Aminu Yusuf",
     createdAt: hrsAgo(3),
+    createdAtLabel: "3 hrs ago",
     updatedAt: hrsAgo(2.1),
     timeline: [
       { status: "pending", timestamp: hrsAgo(3), label: "Order Placed" },
@@ -179,6 +185,7 @@ export const mockOrders: Order[] = [
     riderId: null,
     riderName: null,
     createdAt: minsAgo(2),
+    createdAtLabel: "2 min ago",
     updatedAt: minsAgo(2),
     timeline: [
       { status: "pending", timestamp: minsAgo(2), label: "Order Placed" },
@@ -201,6 +208,7 @@ export const mockOrders: Order[] = [
     riderId: null,
     riderName: null,
     createdAt: minsAgo(8),
+    createdAtLabel: "8 min ago",
     updatedAt: minsAgo(6),
     timeline: [
       { status: "pending", timestamp: minsAgo(8), label: "Order Placed" },
@@ -225,6 +233,7 @@ export const mockOrders: Order[] = [
     riderId: null,
     riderName: null,
     createdAt: hrsAgo(4),
+    createdAtLabel: "4 hrs ago",
     updatedAt: hrsAgo(3.75),
     timeline: [
       { status: "pending", timestamp: hrsAgo(4), label: "Order Placed" },
@@ -248,6 +257,7 @@ export const mockOrders: Order[] = [
     riderId: "R-001",
     riderName: "Muhammad Abdullahi",
     createdAt: hrsAgo(5),
+    createdAtLabel: "5 hrs ago",
     updatedAt: hrsAgo(4),
     timeline: [
       { status: "pending", timestamp: hrsAgo(5), label: "Order Placed" },
@@ -276,6 +286,7 @@ export const mockOrders: Order[] = [
     riderId: "R-003",
     riderName: "Abdulrahman Musa",
     createdAt: minsAgo(42),
+    createdAtLabel: "42 min ago",
     updatedAt: minsAgo(18),
     estimatedDelivery: minsAgo(-10),
     timeline: [
@@ -304,6 +315,7 @@ export const mockOrders: Order[] = [
     riderId: null,
     riderName: null,
     createdAt: minsAgo(28),
+    createdAtLabel: "28 min ago",
     updatedAt: minsAgo(3),
     timeline: [
       { status: "pending", timestamp: minsAgo(28), label: "Order Placed" },
@@ -321,6 +333,7 @@ export const mockNotifications = [
     title: "New Order Received",
     message: "Order #ORD-1018 from Umar Faruk - 3x Chicken Shawarma",
     timestamp: minsAgo(2),
+    timestampLabel: "2 min ago",
     read: false,
   },
   {
@@ -329,6 +342,7 @@ export const mockNotifications = [
     title: "Order Delivered",
     message: "Order #ORD-1020 delivered by Sadiq Bello",
     timestamp: hrsAgo(1.2),
+    timestampLabel: "1 hr ago",
     read: false,
   },
   {
@@ -337,6 +351,7 @@ export const mockNotifications = [
     title: "Rider Available",
     message: "Muhammad Abdullahi is now available",
     timestamp: minsAgo(15),
+    timestampLabel: "15 min ago",
     read: true,
   },
   {
@@ -345,6 +360,7 @@ export const mockNotifications = [
     title: "Order Cancelled",
     message: "Order #ORD-1016 was cancelled by customer",
     timestamp: hrsAgo(3.75),
+    timestampLabel: "3 hrs ago",
     read: true,
   },
   {
@@ -353,6 +369,7 @@ export const mockNotifications = [
     title: "Peak Hour Alert",
     message: "High order volume detected. Consider adding more riders.",
     timestamp: hrsAgo(2),
+    timestampLabel: "2 hrs ago",
     read: true,
   },
   {
@@ -361,6 +378,7 @@ export const mockNotifications = [
     title: "Delivery Completed",
     message: "Order #ORD-1015 delivered successfully",
     timestamp: hrsAgo(4),
+    timestampLabel: "4 hrs ago",
     read: true,
   },
 ];

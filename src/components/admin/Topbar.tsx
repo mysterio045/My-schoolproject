@@ -18,7 +18,7 @@ import {
 import { useApp } from "@/context/AppContext";
 import { useTheme } from "@/context/ThemeContext";
 import { mockNotifications } from "@/lib/mock-data/orders";
-import { cn, getTimeAgo } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 const breadcrumbMap: Record<string, string> = {
   admin: "Dashboard",
@@ -171,7 +171,7 @@ export default function Topbar() {
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-medium text-[var(--foreground)] truncate">{notif.title}</p>
                         <p className="text-[12px] text-[var(--muted-foreground)] line-clamp-2">{notif.message}</p>
-                        <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">{getTimeAgo(notif.timestamp)}</p>
+                        <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">{notif.timestampLabel ?? "Just now"}</p>
                       </div>
                       {!notif.read && (
                         <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />

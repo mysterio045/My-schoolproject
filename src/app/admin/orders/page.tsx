@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { useApp } from "@/context/AppContext";
-import { formatNaira, getTimeAgo, cn } from "@/lib/utils";
+import { formatNaira, cn } from "@/lib/utils";
 import { OrderFilter, Order } from "@/lib/types";
 
 const filterTabs: { label: string; value: OrderFilter }[] = [
@@ -218,7 +218,7 @@ export default function OrdersPage() {
                     </td>
                     <td className="px-5 py-3">
                       <p className="text-[12px] text-[var(--muted-foreground)]">
-                        {getTimeAgo(order.createdAt)}
+                        {order.createdAtLabel ?? "Just now"}
                       </p>
                     </td>
                     <td className="px-5 py-3 text-right">
@@ -377,7 +377,7 @@ export default function OrdersPage() {
                   {order.riderName || "Unassigned"}
                 </span>
                 <span className="text-[var(--muted-foreground)]">
-                  {getTimeAgo(order.createdAt)}
+                  {order.createdAtLabel ?? "Just now"}
                 </span>
               </div>
 
