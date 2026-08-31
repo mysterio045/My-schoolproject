@@ -83,6 +83,13 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args={
+            "ssl": "require",
+            # Supabase uses pgbouncer in transaction mode, which does not
+            # support asyncpg prepared statements. Disabling the statement
+            # cache avoids the "DuplicatePreparedStatementError" error.
+            "statement_cache_size": 0,
+        },
     )
 
     async with connectable.connect() as connection:

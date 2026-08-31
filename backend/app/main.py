@@ -23,6 +23,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.api.routes import auth, customers, menu
 
 
 # =============================================================================
@@ -95,9 +96,8 @@ async def health_check():
 # =============================================================================
 # API Route Registration
 # =============================================================================
-# Route modules will be registered here as they are implemented in later phases.
-# Example (after Phase 6):
-#   from app.api import auth, orders, deliveries, riders, menu, customers
-#   app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
-#   app.include_router(orders.router, prefix="/api/orders", tags=["Orders"])
-#   ...
+# Routers under app/api/routes (auth, menu, customers) are registered here.
+# orders/deliveries/riders/analytics/notifications come in later phases.
+app.include_router(auth.router)
+app.include_router(menu.router)
+app.include_router(customers.router)

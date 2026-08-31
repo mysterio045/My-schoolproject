@@ -37,7 +37,13 @@ engine: AsyncEngine = create_async_engine(
     pool_pre_ping=True,            # Verify connections before using them (prevents stale connections)
     pool_size=10,                  # Maximum persistent connections in the pool
     max_overflow=20,               # Maximum extra connections beyond pool_size
-    connect_args={"ssl": "require"},  # Supabase requires SSL for external connections
+    connect_args={
+        "ssl": "require",  # Supabase requires SSL for external connections
+        # Supabase uses pgbouncer in transaction mode, which does not support
+        # asyncpg prepared statements. Disabling the statement cache avoids
+        # intermittent "DuplicatePreparedStatementError" errors at runtime.
+        "statement_cache_size": 0,
+    },
 )
 
 

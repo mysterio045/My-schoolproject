@@ -101,6 +101,26 @@ The health endpoint should return:
 {"status": "ok"}
 ```
 
+### 6. Run the verification suites
+
+After the server is running, the bundled scripts exercise the implementation
+end-to-end against the live server and database:
+
+```bash
+# Phase 1-3: schema, migration, and model integrity (50 checks)
+python verify_all.py
+
+# Phase 4A: Auth, Menu, and Customer endpoints (29 checks)
+python verify_phase4a.py
+```
+
+Each suite prints `[PASS]`/`[FAIL]` per check and a final tally, and cleans up
+any test records it creates.
+
+> **Note:** passwords are hashed with bcrypt. `requirements.txt` pins
+> `bcrypt==4.0.1` because the pinned `passlib==1.7.4` is incompatible with
+> bcrypt >= 4.1 (`__about__` AttributeError).
+
 ## Architecture Principles
 
 ### Route → Service → Database
@@ -125,22 +145,27 @@ The `notifications` table uses `recipient_type` + `recipient_id` to support admi
 
 ## Current Status
 
-Phase 1 complete. The following are working:
+Phases 1–3 and Phase 4A (Auth, Menu, Customers) complete. Working:
 - FastAPI application with CORS
-- Async SQLAlchemy + asyncpg configuration
+- Async SQLAlchemy + asyncpg configuration (Supabase pooler-compatible)
 - Health check endpoint at `/health`
 - Swagger UI at `/docs`
+- 10-table database schema + Alembic migration (`001_initial`)
+- All Pydantic request/response schemas
+- Auth (register / login / me) with JWT
+- Menu (categories + items, CRUD + availability toggle)
+- Customers (list / search / pagination / detail with order history)
 
 ## Development Phases
 
 | Phase | Status |
 |---|---|
 | 1. Foundation (app, config, database, health check) | Complete |
-| 2. Database models + migrations | Pending |
-| 3. Pydantic schemas | Pending |
+| 2. Database models + migrations | Complete |
+| 3. Pydantic schemas | Complete |
 | 4. Seed data | Pending |
-| 5. Authentication | Pending |
-| 6. Core features (Menu, Customers, Orders, Riders, Deliveries) | Pending |
+| 5. Authentication | Complete (Phase 4A) |
+| 6. Core features (Menu, Customers, Orders, Riders, Deliveries) | In progress (Phase 4A: Menu + Customers done; Orders/Riders/Deliveries pending) |
 | 7. Dispatch algorithm | Pending |
 | 8. Analytics | Pending |
 | 9. Notifications | Pending |

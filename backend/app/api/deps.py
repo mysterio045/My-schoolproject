@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import async_session_factory
+from app.models.admin import AdminUser
 
 # HTTP Bearer scheme — extracts JWT token from Authorization header
 # This enables the "Authorize" button in Swagger UI
@@ -58,22 +59,23 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 # =============================================================================
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
-) -> dict:
+    db: AsyncSession = Depends(get_db),
+) -> AdminUser:
     """
-    Validates the JWT token and returns the current admin user's payload.
+    Validates the JWT token and returns the authenticated admin.
 
-    This is a placeholder that will be fully implemented in Phase 5 (Auth).
-    For now, it decodes the token and returns the payload dict.
+    Steps:
+      1. Decode + validate the JWT from the Authorization header.
+      2. Load the admin from the admin_users table using the token's `sub`.
+      3. Return the admin, or raise HTTP 401 if missing/inactive.
 
-    Token payload structure:
-        {
-            "sub": "<user_id>",
-            "email": "<user_email>",
-            "exp": <expiry_timestamp>
-        }
+    Args:
+        credentials: The bearer token from the Authorization header.
+        db: An async database session (so we can load the admin row).
 
     Raises:
-        HTTPException 401: If token is missing, invalid, or expired.
+        HTTPException 401: Token missing, invalid, expired, or the admin
+            does not exist / is inactive.
     """
     token = credentials.credentials
 
@@ -83,15 +85,37 @@ async def get_current_user(
             settings.JWT_SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM],
         )
-        user_id: str | None = payload.get("sub")
-        if user_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token: missing subject",
-            )
-        return payload
     except JWTError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token: {str(e)}",
+            detail=f"Invalid or expired token: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
         )
+
+    user_id: str | None = payload.get("sub")
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: missing subject",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    import uuid
+
+    try:
+        admin_id = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: malformed subject",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    admin = await db.get(AdminUser, admin_id)
+    if admin is None or not admin.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User no longer exists or is inactive.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return admin

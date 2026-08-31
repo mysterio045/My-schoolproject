@@ -1,2 +1,110 @@
-# app/schemas/__init__.py
-# Pydantic schemas for request/response validation.
+"""
+Pydantic Schemas (Request/Response Models)
+=========================================
+Central exports for all schema modules.
+
+Usage:
+    from app.schemas import OrderCreate, OrderRead, DeliveryRead
+
+Modules
+-------
+- common: base classes, pagination, response envelope
+- admin:  admin auth + profile
+- customer, rider, menu, order, delivery, notification: per-entity schemas
+"""
+
+from app.schemas.common import BaseSchema, ORMModel, Page, PageParams
+from app.schemas.admin import (
+    AdminCreate,
+    AdminLogin,
+    AdminRead,
+    AdminUpdate,
+    TokenResponse,
+)
+from app.schemas.customer import (
+    CustomerCreate,
+    CustomerDetailRead,
+    CustomerRead,
+    CustomerUpdate,
+)
+from app.schemas.rider import (
+    RiderCreate,
+    RiderLocationUpdate,
+    RiderRead,
+    RiderUpdate,
+)
+from app.schemas.menu import (
+    MenuCategoryCreate,
+    MenuCategoryRead,
+    MenuCategoryUpdate,
+    MenuItemCreate,
+    MenuItemRead,
+    MenuItemUpdate,
+)
+from app.schemas.order import (
+    OrderCreate,
+    OrderItemCreate,
+    OrderItemRead,
+    OrderRead,
+    OrderTimelineRead,
+    OrderUpdate,
+)
+from app.schemas.delivery import (
+    AssignRiderRequest,
+    DeliveryCreate,
+    DeliveryRead,
+    DeliveryStatusUpdate,
+    DeliveryWithOrderRead,
+)
+from app.schemas.notification import (
+    NotificationCreate,
+    NotificationRead,
+    NotificationUpdate,
+)
+
+__all__ = [
+    "BaseSchema",
+    "ORMModel",
+    "Page",
+    "PageParams",
+    # admin
+    "AdminCreate",
+    "AdminLogin",
+    "AdminRead",
+    "AdminUpdate",
+    "TokenResponse",
+    # customer
+    "CustomerCreate",
+    "CustomerRead",
+    "CustomerUpdate",
+    "CustomerDetailRead",
+    # rider
+    "RiderCreate",
+    "RiderRead",
+    "RiderUpdate",
+    "RiderLocationUpdate",
+    # menu
+    "MenuCategoryCreate",
+    "MenuCategoryRead",
+    "MenuCategoryUpdate",
+    "MenuItemCreate",
+    "MenuItemRead",
+    "MenuItemUpdate",
+    # order
+    "OrderCreate",
+    "OrderItemCreate",
+    "OrderItemRead",
+    "OrderRead",
+    "OrderTimelineRead",
+    "OrderUpdate",
+    # delivery
+    "AssignRiderRequest",
+    "DeliveryCreate",
+    "DeliveryRead",
+    "DeliveryStatusUpdate",
+    "DeliveryWithOrderRead",
+    # notification
+    "NotificationCreate",
+    "NotificationRead",
+    "NotificationUpdate",
+]
