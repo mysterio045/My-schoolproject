@@ -93,7 +93,7 @@ notifications (polymorphic: admin | customer | rider)
 
 **Indexes:** `ix_riders_status`
 
-**Distance note:** `distance_from_restaurant` is a cached/derived field. The dispatch service calculates real-time distance using haversine formula with rider lat/lng and restaurant coordinates from environment variables.
+**Distance note:** `distance_from_restaurant` is a cached/derived field. The dispatch service (Phase 4D) calculates real-time distance using the haversine formula from rider lat/lng and the `RESTAURANT_LAT`/`RESTAURANT_LNG` configuration; it locks eligible rider rows with `SELECT ... FOR UPDATE` in a single transaction so the same rider is never assigned to two orders concurrently.
 
 ---
 

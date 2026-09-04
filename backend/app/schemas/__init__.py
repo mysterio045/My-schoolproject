@@ -63,6 +63,10 @@ from app.schemas.notification import (
     NotificationRead,
     NotificationUpdate,
 )
+from app.schemas.dispatch import (
+    DispatchRequest,
+    DispatchResultRead,
+)
 
 __all__ = [
     "BaseSchema",
@@ -111,4 +115,7 @@ __all__ = [
     "NotificationCreate",
     "NotificationRead",
     "NotificationUpdate",
+    # dispatch
+    "DispatchRequest",
+    "DispatchResultRead",
 ]

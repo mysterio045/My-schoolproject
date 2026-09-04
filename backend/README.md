@@ -118,6 +118,9 @@ python verify_phase4b.py
 
 # Phase 4C: Riders and Notifications endpoints (38 checks)
 python verify_phase4c.py
+
+# Phase 4D: Smart Rider Dispatch endpoints (29 checks)
+python verify_phase4d.py
 ```
 
 Each suite prints `[PASS]`/`[FAIL]` per check and a final tally, and cleans up
@@ -149,10 +152,30 @@ The API may expose combined status for frontend compatibility, but the database 
 
 The `notifications` table uses `recipient_type` + `recipient_id` to support admin, customer, and rider notifications from the same table. Since PostgreSQL foreign keys cannot validate against multiple tables, recipient validation happens in application logic.
 
+### Dispatch Engine (Concurrency Safety)
+
+Dispatching a rider to an order is done in a **single transaction**:
+
+- Selection locks eligible rider rows with PostgreSQL `SELECT ... FOR UPDATE`
+  (`status = 'available'`, non-null `lat`/`lng`).
+- Distance is computed dynamically with the Haversine formula from
+  `rider.lat`/`rider.lng` + `RESTAURANT_LAT`/`RESTAURANT_LNG`. The cached
+  `riders.distance_from_restaurant` column is **never** used for selection.
+- The nearest rider is chosen; equal distances are broken deterministically by
+  ascending rider id. The rider is marked `busy`, the delivery is set to
+  `assigned` (with `assigned_at`), and a `Rider Assigned` timeline entry is added.
+
+Under READ COMMITTED, concurrent dispatch requests that reach the same statement
+block on the locked rows; when the first transaction commits, the waiting one
+re-evaluates the predicate (the locked rider is now busy) and selects a different
+rider — or fails with `No available riders`. This guarantees the same rider is
+never assigned to two orders at once.
+
 ## Current Status
 
 Phases 1–3, Phase 4A (Auth, Menu, Customers), Phase 4B (Orders, Deliveries),
-and Phase 4C (Riders, Notifications) complete. Working:
+Phase 4C (Riders, Notifications), and Phase 4D (Smart Rider Dispatch) complete.
+Working:
 - FastAPI application with CORS
 - Async SQLAlchemy + asyncpg configuration (Supabase pooler-compatible)
 - Health check endpoint at `/health`
@@ -166,6 +189,9 @@ and Phase 4C (Riders, Notifications) complete. Working:
 - Deliveries (list, get by id/order, logistics status lifecycle w/ timestamps)
 - Riders (CRUD, list w/ search + status filter, detail w/ delivery history, availability status)
 - Notifications (create, list for a recipient, unread filter/count, mark read/unread)
+- Dispatch (assign the nearest eligible available rider to a 'ready' order,
+  atomic `SELECT ... FOR UPDATE` selection with haversine distance + deterministic
+  tie-break, marks rider busy, records the timeline event)
 
 ## Development Phases
 
@@ -177,7 +203,7 @@ and Phase 4C (Riders, Notifications) complete. Working:
 | 4. Seed data | Pending |
 | 5. Authentication | Complete (Phase 4A) |
 | 6. Core features (Menu, Customers, Orders, Riders, Deliveries) | Complete (Phases 4A/4B/4C) |
-| 7. Dispatch algorithm | Pending (Phase 4D) |
+| 7. Dispatch algorithm | Complete (Phase 4D) |
 | 8. Notifications | Complete (Phase 4C) |
 | 9. Analytics | Pending |
 | 10. Real-time tracking | Pending |

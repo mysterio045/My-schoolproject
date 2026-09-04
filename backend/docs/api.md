@@ -191,6 +191,36 @@ Responses:
 
 ---
 
+## Dispatch (Phase 4D)
+
+Assign the nearest eligible available rider to a `ready` order. Full design notes
+in [`dispatch.md`](dispatch.md).
+
+Both endpoints are **auth required** and delegate to the same
+`dispatch_service.assign_nearest_rider`.
+
+### POST `/api/dispatch/nearest-rider`
+Auth. Assign the nearest eligible available rider (`status = 'available'` with
+non-null `lat`/`lng`) to a ready order. Distance is computed live with the
+Haversine formula; ties broken by ascending rider id.
+
+Request body (`DispatchRequest`): `{ "order_id": "uuid" }`
+
+Responses:
+- `200` → `DispatchResultRead`
+  (`{ delivery, rider, distance_km, message }`) — delivery becomes `assigned`
+  (with `assigned_at`), rider becomes `busy`, `Rider Assigned` timeline added,
+  order stays `ready`.
+- `400` → order not `ready`, or delivery not `pending`
+- `404` → order/delivery not found, or `No available riders`
+- `409` → delivery already has a rider
+- `401` → not authenticated
+
+### POST `/api/dispatch/assign`
+Auth. Explicit alias for `nearest-rider` (same service call, same contract).
+
+---
+
 ## Endpoint Summary
 
 | Method | Path | Auth | Summary |
@@ -208,5 +238,7 @@ Responses:
 | PATCH | `/api/menu/{id}/toggle` | ✓ | Toggle availability |
 | GET | `/api/customers` | ✓ | List customers |
 | GET | `/api/customers/{id}` | ✓ | Customer + orders |
+| POST | `/api/dispatch/nearest-rider` | ✓ | Assign nearest available rider |
+| POST | `/api/dispatch/assign` | ✓ | Alias for nearest-rider |
 
 Interactive docs: `http://127.0.0.1:8000/docs` (Swagger UI).
