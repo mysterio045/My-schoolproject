@@ -26,6 +26,7 @@ from decimal import Decimal
 from pydantic import EmailStr, Field
 
 from app.schemas.common import BaseSchema
+from app.schemas.delivery import DeliveryRead
 from app.models.enums import RiderStatus
 
 
@@ -97,3 +98,14 @@ class RiderRead(BaseSchema):
     joined_at: date
     created_at: datetime
     updated_at: datetime
+
+
+class RiderDetailRead(RiderRead):
+    """
+    Rider plus their delivery history.
+
+    Used by the rider detail endpoint so the UI can render which deliveries
+    each rider has been involved in alongside the rider's profile.
+    """
+
+    deliveries: list[DeliveryRead] = Field(default_factory=list)

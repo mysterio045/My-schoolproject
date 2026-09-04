@@ -29,6 +29,7 @@ from app.schemas.customer import (
 )
 from app.schemas.rider import (
     RiderCreate,
+    RiderDetailRead,
     RiderLocationUpdate,
     RiderRead,
     RiderUpdate,
@@ -84,6 +85,7 @@ __all__ = [
     "RiderRead",
     "RiderUpdate",
     "RiderLocationUpdate",
+    "RiderDetailRead",
     # menu
     "MenuCategoryCreate",
     "MenuCategoryRead",

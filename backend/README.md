@@ -112,6 +112,12 @@ python verify_all.py
 
 # Phase 4A: Auth, Menu, and Customer endpoints (29 checks)
 python verify_phase4a.py
+
+# Phase 4B: Orders and Deliveries endpoints (44 checks)
+python verify_phase4b.py
+
+# Phase 4C: Riders and Notifications endpoints (38 checks)
+python verify_phase4c.py
 ```
 
 Each suite prints `[PASS]`/`[FAIL]` per check and a final tally, and cleans up
@@ -145,7 +151,8 @@ The `notifications` table uses `recipient_type` + `recipient_id` to support admi
 
 ## Current Status
 
-Phases 1–3 and Phase 4A (Auth, Menu, Customers) complete. Working:
+Phases 1–3, Phase 4A (Auth, Menu, Customers), Phase 4B (Orders, Deliveries),
+and Phase 4C (Riders, Notifications) complete. Working:
 - FastAPI application with CORS
 - Async SQLAlchemy + asyncpg configuration (Supabase pooler-compatible)
 - Health check endpoint at `/health`
@@ -155,6 +162,10 @@ Phases 1–3 and Phase 4A (Auth, Menu, Customers) complete. Working:
 - Auth (register / login / me) with JWT
 - Menu (categories + items, CRUD + availability toggle)
 - Customers (list / search / pagination / detail with order history)
+- Orders (create w/ server-side pricing, list, detail, kitchen status lifecycle)
+- Deliveries (list, get by id/order, logistics status lifecycle w/ timestamps)
+- Riders (CRUD, list w/ search + status filter, detail w/ delivery history, availability status)
+- Notifications (create, list for a recipient, unread filter/count, mark read/unread)
 
 ## Development Phases
 
@@ -165,10 +176,11 @@ Phases 1–3 and Phase 4A (Auth, Menu, Customers) complete. Working:
 | 3. Pydantic schemas | Complete |
 | 4. Seed data | Pending |
 | 5. Authentication | Complete (Phase 4A) |
-| 6. Core features (Menu, Customers, Orders, Riders, Deliveries) | In progress (Phase 4A: Menu + Customers done; Orders/Riders/Deliveries pending) |
-| 7. Dispatch algorithm | Pending |
-| 8. Analytics | Pending |
-| 9. Notifications | Pending |
+| 6. Core features (Menu, Customers, Orders, Riders, Deliveries) | Complete (Phases 4A/4B/4C) |
+| 7. Dispatch algorithm | Pending (Phase 4D) |
+| 8. Notifications | Complete (Phase 4C) |
+| 9. Analytics | Pending |
+| 10. Real-time tracking | Pending |
 
 ## Frontend Integration
 
