@@ -29,8 +29,10 @@ from app.database import async_session_factory
 from app.models.admin import AdminUser
 
 # HTTP Bearer scheme — extracts JWT token from Authorization header
-# This enables the "Authorize" button in Swagger UI
-security_scheme = HTTPBearer()
+# This enables the "Authorize" button in Swagger UI.
+# auto_error=False so a MISSING header is handled by get_current_user (returning
+# 401) instead of HTTPBearer short-circuiting with a 403.
+security_scheme = HTTPBearer(auto_error=False)
 
 
 # =============================================================================
@@ -77,6 +79,13 @@ async def get_current_user(
         HTTPException 401: Token missing, invalid, expired, or the admin
             does not exist / is inactive.
     """
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     token = credentials.credentials
 
     try:

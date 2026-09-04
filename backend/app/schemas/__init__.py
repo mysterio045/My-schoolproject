@@ -46,6 +46,7 @@ from app.schemas.order import (
     OrderItemCreate,
     OrderItemRead,
     OrderRead,
+    OrderStatusUpdate,
     OrderTimelineRead,
     OrderUpdate,
 )
@@ -95,6 +96,7 @@ __all__ = [
     "OrderItemCreate",
     "OrderItemRead",
     "OrderRead",
+    "OrderStatusUpdate",
     "OrderTimelineRead",
     "OrderUpdate",
     # delivery

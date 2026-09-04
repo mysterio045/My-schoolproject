@@ -97,6 +97,17 @@ class OrderUpdate(BaseSchema):
     estimated_delivery: datetime | None = None
 
 
+class OrderStatusUpdate(BaseSchema):
+    """
+    Payload to advance an order's status.
+
+    The service layer enforces the valid transition graph
+    (e.g. you cannot jump straight from 'pending' to 'completed').
+    """
+
+    status: OrderStatus
+
+
 # ---------------------------------------------------------------------------
 # Order Read
 # ---------------------------------------------------------------------------

@@ -31,18 +31,25 @@ from app.config import settings
 # =============================================================================
 # create_async_engine creates a connection pool to PostgreSQL using asyncpg.
 # The engine manages connections automatically — you don't open/close connections manually.
+#
+# Connectivity notes (Supabase):
+# - We connect through Supabase's SESSION pooler (port 5432). A session-pooled
+#   connection is pinned to one backend server, so asyncpg prepared statements
+#   work normally. (The TRANSACTION pooler on port 6543 would make SQLAlchemy's
+#   prepared-statement names collide — DuplicatePreparedStatementError.)
+# - asyncpg's statement cache is disabled as an extra safety net.
+# - A generous command timeout accommodates the slow pooler network.
 engine: AsyncEngine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,           # Log SQL queries when DEBUG=True
-    pool_pre_ping=True,            # Verify connections before using them (prevents stale connections)
+    pool_pre_ping=True,            # Verify connections before reuse (avoids stale connections)
     pool_size=10,                  # Maximum persistent connections in the pool
     max_overflow=20,               # Maximum extra connections beyond pool_size
     connect_args={
         "ssl": "require",  # Supabase requires SSL for external connections
-        # Supabase uses pgbouncer in transaction mode, which does not support
-        # asyncpg prepared statements. Disabling the statement cache avoids
-        # intermittent "DuplicatePreparedStatementError" errors at runtime.
         "statement_cache_size": 0,
+        # Generous command timeout — the Supabase pooler can be slow to respond.
+        "command_timeout": 120,
     },
 )
 

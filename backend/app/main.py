@@ -23,7 +23,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.api.routes import auth, customers, menu
+from app.api.routes import auth, customers, menu, orders, deliveries
 
 
 # =============================================================================
@@ -96,8 +96,10 @@ async def health_check():
 # =============================================================================
 # API Route Registration
 # =============================================================================
-# Routers under app/api/routes (auth, menu, customers) are registered here.
-# orders/deliveries/riders/analytics/notifications come in later phases.
+# Routers under app/api/routes (auth, menu, customers, orders, deliveries)
+# are registered here. riders/analytics/notifications come in later phases.
 app.include_router(auth.router)
 app.include_router(menu.router)
 app.include_router(customers.router)
+app.include_router(orders.router)
+app.include_router(deliveries.router)

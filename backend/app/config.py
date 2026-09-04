@@ -10,6 +10,8 @@ Environment variables are loaded in this priority:
 2. .env file in the backend directory
 """
 
+from decimal import Decimal
+
 from pydantic_settings import BaseSettings
 from pydantic import Field
 
@@ -51,6 +53,14 @@ class Settings(BaseSettings):
         description="Comma-separated list of allowed origins for CORS.",
     )
 
+    # --- Delivery Fee ---
+    # Flat delivery fee charged on every order. Comes from configuration so it
+    # is not hardcoded in route or service logic. Rule is configurable in .env.
+    DELIVERY_FEE: str = Field(
+        default="1500.00",
+        description="Flat delivery fee (as a decimal string) applied to every order.",
+    )
+
     # --- Restaurant Location ---
     # These will be replaced with verified Hasinah Confectionery coordinates later.
     # Stored here instead of hardcoded in dispatch logic.
@@ -81,6 +91,11 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         """Parse the comma-separated CORS_ORIGINS string into a list."""
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+
+    @property
+    def delivery_fee(self) -> Decimal:
+        """The configured flat delivery fee as a Decimal."""
+        return Decimal(self.DELIVERY_FEE.strip())
 
     model_config = {
         "env_file": ".env",
