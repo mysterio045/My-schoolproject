@@ -147,6 +147,115 @@ export interface DashboardRecentNotification {
   created_at: string;
 }
 
+/**
+ * Backend order statuses (Phase 4B `OrderStatus` enum): the kitchen lifecycle.
+ * `assigned`/`on_the_way`/`delivered` are DELIVERY statuses, never order statuses.
+ */
+export type BackendOrderStatus =
+  | "pending"
+  | "confirmed"
+  | "preparing"
+  | "ready"
+  | "completed"
+  | "cancelled";
+
+/** Backend `DeliveryStatus` enum (logistics lifecycle, independent of order status). */
+export type DeliveryStatus =
+  | "pending"
+  | "assigned"
+  | "accepted"
+  | "picked_up"
+  | "on_the_way"
+  | "delivered"
+  | "failed";
+
+export interface OrderLineItem {
+  id: string;
+  order_id: string;
+  menu_item_id: string;
+  name_snapshot: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+}
+
+export interface OrderTimelineEntry {
+  id: string;
+  order_id: string;
+  status: string;
+  label: string;
+  created_at: string;
+}
+
+export interface OrderRecord {
+  id: string;
+  order_number: string;
+  customer_id: string;
+  customer_name: string;
+  customer_phone: string;
+  delivery_address: string;
+  subtotal: number;
+  delivery_fee: number;
+  total: number;
+  status: BackendOrderStatus;
+  estimated_delivery: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  items: OrderLineItem[];
+  timeline: OrderTimelineEntry[];
+}
+
+export interface DeliveryRecord {
+  id: string;
+  order_id: string;
+  rider_id: string | null;
+  status: DeliveryStatus;
+  pickup_location: string | null;
+  delivery_location: string | null;
+  assigned_at: string | null;
+  accepted_at: string | null;
+  picked_up_at: string | null;
+  delivered_at: string | null;
+  failed_at: string | null;
+  failure_reason: string | null;
+  rider_lat: number | null;
+  rider_lng: number | null;
+  created_at: string;
+  updated_at: string;
+  order?: OrderRecord;
+}
+
+export interface RiderRecord {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  status: "available" | "busy" | "offline";
+  lat: number | null;
+  lng: number | null;
+  location_address: string | null;
+  distance_from_restaurant: number | null;
+  today_deliveries: number;
+  completed_deliveries: number;
+  average_delivery_time: number;
+  rating: number;
+  avatar: string | null;
+  joined_at: string;
+  created_at: string;
+  updated_at: string;
+  deliveries?: DeliveryRecord[];
+}
+
+/** Paginated response envelope shared by all backend list endpoints. */
+export interface PageResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}
+
 export interface DashboardSummary {
   total_orders: number;
   total_revenue: number;
