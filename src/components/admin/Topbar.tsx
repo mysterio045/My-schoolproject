@@ -17,8 +17,9 @@ import {
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useAuth } from "@/context/AuthContext";
 import { mockNotifications } from "@/lib/mock-data/orders";
-import { cn } from "@/lib/utils";
+import { getInitials, cn } from "@/lib/utils";
 
 const breadcrumbMap: Record<string, string> = {
   admin: "Dashboard",
@@ -43,6 +44,7 @@ export default function Topbar() {
   const pathname = usePathname();
   const { setMobileMenuOpen } = useApp();
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
   const [notifOpen, setNotifOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -185,8 +187,11 @@ export default function Topbar() {
         </div>
 
         {/* Avatar */}
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--primary)] text-[11px] font-semibold text-[var(--primary-foreground)] ml-1">
-          AD
+        <div
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--primary)] text-[11px] font-semibold text-[var(--primary-foreground)] ml-1"
+          title={user?.name ?? "Administrator"}
+        >
+          {getInitials(user?.name ?? "Administrator")}
         </div>
       </div>
     </header>

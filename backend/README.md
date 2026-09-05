@@ -80,7 +80,7 @@ Edit `.env` with your values:
 ```env
 DATABASE_URL=postgresql+asyncpg://postgres:your_password@db.your-project.supabase.co:5432/postgres
 JWT_SECRET_KEY=your-super-secret-random-key
-CORS_ORIGINS=http://localhost:3000
+CORS_ORIGINS=http://localhost:3000   # match the Next.js frontend dev origin; 127.0.0.1 is NOT allowed by default
 ```
 
 ### 4. Run the Server
@@ -210,4 +210,9 @@ Working:
 
 ## Frontend Integration
 
-The existing Next.js frontend (in `frontend/src/`) currently uses mock data. After Phase 9, the frontend's `AppContext` will be updated to fetch from this API instead of using hardcoded mock data.
+The Next.js frontend lives at the repo root (`src/`). A centralized API client
+(`src/lib/api/client.ts`) points at the backend via `NEXT_PUBLIC_API_URL`
+(see `.env.example`), and Phase 5A wired frontend authentication
+(`src/lib/auth/*`, `AuthProvider`) to `/api/auth/login` and `/api/auth/me`.
+Business pages still render mock data; from Phase 5B onward they will fetch
+from this API instead of using hardcoded mock data.

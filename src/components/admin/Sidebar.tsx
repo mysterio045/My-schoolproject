@@ -15,9 +15,11 @@ import {
   ChevronRight,
   X,
   Circle,
+  LogOut,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
+import { getInitials, cn } from "@/lib/utils";
 
 const mainNav = [
   { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -81,6 +83,8 @@ function NavSection({ title, collapsed, children }: { title: string; collapsed?:
 
 export default function Sidebar() {
   const { sidebarCollapsed, toggleSidebar, mobileMenuOpen, setMobileMenuOpen } = useApp();
+  const { user, logout } = useAuth();
+  const displayName = user?.name ?? "Administrator";
 
   const sidebarContent = (
     <>
@@ -152,16 +156,36 @@ export default function Sidebar() {
         <div className="border-t border-[var(--border)] px-3 py-3">
           <div className={cn("flex items-center gap-3", sidebarCollapsed && "justify-center")}>
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--primary)] text-[11px] font-semibold text-[var(--primary-foreground)]">
-              AD
+              {getInitials(displayName)}
             </div>
             {!sidebarCollapsed && (
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-medium text-[var(--foreground)] truncate">Administrator</p>
-                <div className="flex items-center gap-1.5">
-                  <Circle className="h-1.5 w-1.5 fill-green-500 text-green-500" />
-                  <span className="text-[11px] text-[var(--muted-foreground)]">Online</span>
+              <>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium text-[var(--foreground)] truncate">{displayName}</p>
+                  <div className="flex items-center gap-1.5">
+                    <Circle className="h-1.5 w-1.5 fill-green-500 text-green-500" />
+                    <span className="text-[11px] text-[var(--muted-foreground)]">Online</span>
+                  </div>
                 </div>
-              </div>
+                <button
+                  onClick={logout}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--muted-foreground)] hover:bg-[var(--sidebar-accent)] hover:text-[var(--foreground)] transition-colors"
+                  aria-label="Log out"
+                  title="Log out"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </>
+            )}
+            {sidebarCollapsed && (
+              <button
+                onClick={logout}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--muted-foreground)] hover:bg-[var(--sidebar-accent)] hover:text-[var(--foreground)] transition-colors"
+                aria-label="Log out"
+                title="Log out"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
             )}
           </div>
         </div>
