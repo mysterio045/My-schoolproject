@@ -38,6 +38,7 @@ export function getStatusColor(status: OrderStatus): string {
     assigned: "bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-900/20 dark:text-cyan-400 dark:border-cyan-800",
     on_the_way: "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800",
     delivered: "bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800",
+    completed: "bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800",
     cancelled: "bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800",
   };
   return colors[status];
@@ -52,6 +53,7 @@ export function getStatusLabel(status: OrderStatus): string {
     assigned: "Assigned",
     on_the_way: "On the Way",
     delivered: "Delivered",
+    completed: "Completed",
     cancelled: "Cancelled",
   };
   return labels[status];

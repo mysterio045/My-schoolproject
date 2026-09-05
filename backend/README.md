@@ -121,6 +121,9 @@ python verify_phase4c.py
 
 # Phase 4D: Smart Rider Dispatch endpoints (29 checks)
 python verify_phase4d.py
+
+# Phase 5B: Dashboard Summary endpoint (29 checks)
+python verify_phase5b.py
 ```
 
 Each suite prints `[PASS]`/`[FAIL]` per check and a final tally, and cleans up
@@ -174,7 +177,8 @@ never assigned to two orders at once.
 ## Current Status
 
 Phases 1–3, Phase 4A (Auth, Menu, Customers), Phase 4B (Orders, Deliveries),
-Phase 4C (Riders, Notifications), and Phase 4D (Smart Rider Dispatch) complete.
+Phase 4C (Riders, Notifications), Phase 4D (Smart Rider Dispatch), and
+Phase 5B (Dashboard Summary) complete.
 Working:
 - FastAPI application with CORS
 - Async SQLAlchemy + asyncpg configuration (Supabase pooler-compatible)
@@ -192,6 +196,10 @@ Working:
 - Dispatch (assign the nearest eligible available rider to a 'ready' order,
   atomic `SELECT ... FOR UPDATE` selection with haversine distance + deterministic
   tie-break, marks rider busy, records the timeline event)
+- Dashboard summary (`GET /api/dashboard/summary`) — total orders/revenue,
+  customer count, rider availability counts, pending orders, orders/revenue
+  today (database clock), recent orders (with rider name) and the current
+  admin's recent notifications, all computed from the database
 
 ## Development Phases
 
@@ -214,5 +222,7 @@ The Next.js frontend lives at the repo root (`src/`). A centralized API client
 (`src/lib/api/client.ts`) points at the backend via `NEXT_PUBLIC_API_URL`
 (see `.env.example`), and Phase 5A wired frontend authentication
 (`src/lib/auth/*`, `AuthProvider`) to `/api/auth/login` and `/api/auth/me`.
-Business pages still render mock data; from Phase 5B onward they will fetch
-from this API instead of using hardcoded mock data.
+Phase 5B replaced the admin dashboard's mock statistics with real data from
+`GET /api/dashboard/summary` (stat cards, refresh, loading/error states, recent
+orders). Remaining business pages still render mock data; later phases will
+fetch from this API instead of using hardcoded mocks.

@@ -14,6 +14,7 @@ const orderStatusStyles: Record<OrderStatus, string> = {
   assigned: "bg-cyan-50 text-cyan-700 dark:bg-cyan-900/20 dark:text-cyan-400",
   on_the_way: "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400",
   delivered: "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400",
+  completed: "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400",
   cancelled: "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400",
 };
 
@@ -31,6 +32,7 @@ const orderStatusLabels: Record<OrderStatus, string> = {
   assigned: "Assigned",
   on_the_way: "On the Way",
   delivered: "Delivered",
+  completed: "Completed",
   cancelled: "Cancelled",
 };
 

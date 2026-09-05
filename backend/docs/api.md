@@ -191,6 +191,57 @@ Responses:
 
 ---
 
+## Dashboard (Phase 5B)
+
+### GET `/api/dashboard/summary`
+Auth required. Single aggregate payload for the admin dashboard.
+
+All counts are computed from PostgreSQL aggregate queries. "Today" uses the
+database clock (`func.now()`), so there is no browser/naive-datetime drift.
+Revenue is defined as the sum of order totals for non-cancelled orders.
+
+Responses:
+- `200` → `DashboardSummary`
+- `401` → not authenticated
+
+`DashboardSummary`:
+
+```json
+{
+  "total_orders": 42,
+  "total_revenue": 147000.0,
+  "total_customers": 5,
+  "available_riders": 3,
+  "busy_riders": 1,
+  "offline_riders": 0,
+  "pending_orders": 4,
+  "orders_today": 6,
+  "revenue_today": 21000.0,
+  "recent_orders": [
+    {
+      "id": "uuid",
+      "order_number": "ORD-001",
+      "customer_name": "Amina",
+      "status": "completed",
+      "total": 3500.0,
+      "rider_name": "Musa B.",
+      "created_at": "2026-09-05T10:30:00"
+    }
+  ],
+  "recent_notifications": [
+    {
+      "id": "uuid",
+      "type": "order",
+      "title": "New Order",
+      "message": "Order ORD-001 placed",
+      "created_at": "2026-09-05T10:30:00"
+    }
+  ]
+}
+```
+
+---
+
 ## Dispatch (Phase 4D)
 
 Assign the nearest eligible available rider to a `ready` order. Full design notes
@@ -238,6 +289,7 @@ Auth. Explicit alias for `nearest-rider` (same service call, same contract).
 | PATCH | `/api/menu/{id}/toggle` | ✓ | Toggle availability |
 | GET | `/api/customers` | ✓ | List customers |
 | GET | `/api/customers/{id}` | ✓ | Customer + orders |
+| GET | `/api/dashboard/summary` | ✓ | Dashboard aggregate summary |
 | POST | `/api/dispatch/nearest-rider` | ✓ | Assign nearest available rider |
 | POST | `/api/dispatch/assign` | ✓ | Alias for nearest-rider |
 

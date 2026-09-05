@@ -6,6 +6,7 @@ export type OrderStatus =
   | "assigned"
   | "on_the_way"
   | "delivered"
+  | "completed"
   | "cancelled";
 
 export type RiderStatus = "available" | "busy" | "offline";
@@ -127,3 +128,35 @@ export type OrderFilter =
   | "on_the_way"
   | "delivered"
   | "cancelled";
+
+export interface DashboardRecentOrder {
+  id: string;
+  order_number: string;
+  customer_name: string;
+  status: OrderStatus;
+  total: number;
+  rider_name: string | null;
+  created_at: string;
+}
+
+export interface DashboardRecentNotification {
+  id: string;
+  type: "order" | "rider" | "system" | "delivery";
+  title: string;
+  message: string;
+  created_at: string;
+}
+
+export interface DashboardSummary {
+  total_orders: number;
+  total_revenue: number;
+  total_customers: number;
+  available_riders: number;
+  busy_riders: number;
+  offline_riders: number;
+  pending_orders: number;
+  orders_today: number;
+  revenue_today: number;
+  recent_orders: DashboardRecentOrder[];
+  recent_notifications: DashboardRecentNotification[];
+}

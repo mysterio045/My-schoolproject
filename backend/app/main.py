@@ -32,6 +32,7 @@ from app.api.routes import (
     riders,
     notifications,
     dispatch,
+    dashboard,
 )
 
 
@@ -106,8 +107,8 @@ async def health_check():
 # API Route Registration
 # =============================================================================
 # Routers under app/api/routes (auth, menu, customers, orders, deliveries,
-# riders, notifications, dispatch) are registered here. analytics/real-time
-# come in later phases.
+# riders, notifications, dispatch, dashboard) are registered here. analytics/
+# real-time come in later phases.
 app.include_router(auth.router)
 app.include_router(menu.router)
 app.include_router(customers.router)
@@ -116,3 +117,4 @@ app.include_router(deliveries.router)
 app.include_router(riders.router)
 app.include_router(notifications.router)
 app.include_router(dispatch.router)
+app.include_router(dashboard.router)
