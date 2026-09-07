@@ -256,6 +256,73 @@ export interface PageResult<T> {
   pages: number;
 }
 
+/** Backend `MenuCategoryRead` (Phase 4A menu categories, money-free). */
+export interface MenuCategoryRecord {
+  id: string;
+  name: string;
+  description: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Backend `MenuItemRead` (Phase 4A menu items; price serialized as a number). */
+export interface MenuItemRecord {
+  id: string;
+  category_id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  available: boolean;
+  image: string | null;
+  rating: number;
+  order_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Payload for `POST /api/menu/categories`. */
+export interface MenuCategoryCreatePayload {
+  name: string;
+  description?: string | null;
+  sort_order?: number;
+}
+
+/** Payload for `PATCH /api/menu/categories/{id}` (all fields optional). */
+export interface MenuCategoryUpdatePayload {
+  name?: string;
+  description?: string | null;
+  sort_order?: number;
+}
+
+/** Payload for `POST /api/menu`. */
+export interface MenuItemCreatePayload {
+  category_id: string;
+  name: string;
+  description?: string | null;
+  price: number;
+  available?: boolean;
+  image?: string | null;
+}
+
+/** Payload for `PATCH /api/menu/{id}` (all fields optional). */
+export interface MenuItemUpdatePayload {
+  category_id?: string;
+  name?: string;
+  description?: string | null;
+  price?: number;
+  available?: boolean;
+  image?: string | null;
+}
+
+/** Query params for `GET /api/menu`. */
+export interface MenuItemListParams {
+  page?: number;
+  page_size?: number;
+  category_id?: string;
+  available?: boolean;
+}
+
 export interface DashboardSummary {
   total_orders: number;
   total_revenue: number;
