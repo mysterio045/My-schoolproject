@@ -323,6 +323,35 @@ export interface MenuItemListParams {
   available?: boolean;
 }
 
+/** Backend `CustomerRead` (Phase 4A customers; write ops are future work). */
+export interface CustomerRecord {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  address: string | null;
+  status: "active" | "inactive";
+  /** Lifetime order count, maintained by the backend order service. */
+  total_orders: number;
+  /** Lifetime revenue from this customer, maintained by the backend. */
+  total_spent: number;
+  last_order_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Backend `CustomerDetailRead`: a customer plus their order history (newest first). */
+export interface CustomerDetailRecord extends CustomerRecord {
+  orders: OrderRecord[];
+}
+
+/** Query params for `GET /api/customers`. */
+export interface CustomerListParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+}
+
 export interface DashboardSummary {
   total_orders: number;
   total_revenue: number;
