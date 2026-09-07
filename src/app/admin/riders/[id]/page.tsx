@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -17,11 +17,47 @@ import {
   Activity,
   UserPlus,
   X,
+  RefreshCw,
 } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
-import { useApp } from "@/context/AppContext";
-import { cn } from "@/lib/utils";
+import LoadingState from "@/components/ui/LoadingState";
+import { cn, getInitials, getTimeAgo } from "@/lib/utils";
+import { ApiError, getErrorMessage } from "@/lib/api/errors";
+import { getRider, updateRiderStatus } from "@/lib/api/riders";
 import { showToast } from "@/components/ui/Toast";
+import type { DeliveryStatus, RiderRecord, RiderStatus } from "@/lib/types";
+
+const ACTIVE_DELIVERY_STATUSES: DeliveryStatus[] = [
+  "assigned",
+  "accepted",
+  "picked_up",
+  "on_the_way",
+];
+
+function deliveryStatusLabel(status: DeliveryStatus): string {
+  return status
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function deliveryStatusTone(status: DeliveryStatus): string {
+  switch (status) {
+    case "delivered":
+      return "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400";
+    case "failed":
+      return "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400";
+    case "pending":
+      return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+    case "assigned":
+      return "bg-cyan-50 text-cyan-700 dark:bg-cyan-900/20 dark:text-cyan-400";
+    case "accepted":
+      return "bg-violet-50 text-violet-700 dark:bg-violet-900/20 dark:text-violet-400";
+    case "picked_up":
+      return "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400";
+    case "on_the_way":
+      return "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400";
+  }
+}
 
 export default function RiderDetailPage({
   params,
@@ -29,19 +65,89 @@ export default function RiderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { riders, setRiders } = useApp();
-  const rider = riders.find((r) => r.id === id);
+  const [rider, setRider] = useState<RiderRecord | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
 
-  if (!rider) {
+  const loadRider = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    setNotFound(false);
+    try {
+      setRider(await getRider(id));
+    } catch (err) {
+      if (err instanceof ApiError && err.isNotFound) setNotFound(true);
+      else setError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadRider();
+  }, [loadRider]);
+
+  const handleSetStatus = async (status: RiderStatus) => {
+    if (!rider) return;
+    try {
+      const updated = await updateRiderStatus(id, status);
+      setRider(updated);
+      showToast("success", `${updated.name} is now ${status}`);
+    } catch (err) {
+      showToast("error", getErrorMessage(err));
+      void loadRider();
+    }
+  };
+
+  const handleAssignOrder = () => {
+    if (!rider) return;
+    showToast("success", `Assign order flow initiated for ${rider.name}`);
+  };
+
+  const activeDeliveries = useMemo(
+    () =>
+      (rider?.deliveries ?? []).filter((d) =>
+        ACTIVE_DELIVERY_STATUSES.includes(d.status)
+      ),
+    [rider]
+  );
+
+  const deliveryHistory = useMemo(
+    () =>
+      [...(rider?.deliveries ?? [])].sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      ),
+    [rider]
+  );
+
+  const backLink = (
+    <Link
+      href="/admin/riders"
+      className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+    >
+      <ArrowLeft className="h-4 w-4" />
+      Back to Riders
+    </Link>
+  );
+
+  if (loading && !rider) {
     return (
       <div className="space-y-6">
-        <Link
-          href="/admin/riders"
-          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Riders
-        </Link>
+        {backLink}
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)]">
+          <LoadingState />
+        </div>
+      </div>
+    );
+  }
+
+  if (notFound) {
+    return (
+      <div className="space-y-6">
+        {backLink}
         <div className="flex flex-col items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] py-16">
           <Bike className="h-12 w-12 text-[var(--muted-foreground)] opacity-40" />
           <div className="text-center">
@@ -63,33 +169,29 @@ export default function RiderDetailPage({
     );
   }
 
-  const handleSetAvailable = () => {
-    setRiders((prev) =>
-      prev.map((r) =>
-        r.id === rider.id
-          ? { ...r, status: "available" as const, currentOrderIds: [] }
-          : r
-      )
+  if (error && !rider) {
+    return (
+      <div className="space-y-6">
+        {backLink}
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] py-16">
+          <p className="text-[13px] text-[var(--muted-foreground)]">{error}</p>
+          <button
+            onClick={() => void loadRider()}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--primary)] px-3 py-1.5 text-[12px] font-medium text-[var(--primary-foreground)] hover:opacity-90 transition-opacity"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Try Again
+          </button>
+        </div>
+      </div>
     );
-    showToast("success", `${rider.name} is now available`);
-  };
+  }
 
-  const handleSetOffline = () => {
-    setRiders((prev) =>
-      prev.map((r) =>
-        r.id === rider.id
-          ? { ...r, status: "offline" as const, currentOrderIds: [] }
-          : r
-      )
-    );
-    showToast("success", `${rider.name} is now offline`);
-  };
+  if (!rider) {
+    return null;
+  }
 
-  const handleAssignOrder = () => {
-    showToast("success", `Assign order flow initiated for ${rider.name}`);
-  };
-
-  const joinedDate = new Date(rider.joinedDate).toLocaleDateString("en-NG", {
+  const joinedDate = new Date(rider.joined_at).toLocaleDateString("en-NG", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -98,19 +200,13 @@ export default function RiderDetailPage({
   return (
     <div className="space-y-6">
       {/* Back Button */}
-      <Link
-        href="/admin/riders"
-        className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Riders
-      </Link>
+      {backLink}
 
       {/* Rider Profile Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--accent)] text-lg font-bold text-[var(--foreground)]">
-            {rider.avatar}
+            {rider.avatar ?? getInitials(rider.name)}
           </div>
           <div>
             <h1 className="text-xl font-bold text-[var(--foreground)]">{rider.name}</h1>
@@ -123,7 +219,7 @@ export default function RiderDetailPage({
         <div className="flex gap-2 self-start">
           {rider.status !== "available" && (
             <button
-              onClick={handleSetAvailable}
+              onClick={() => void handleSetStatus("available")}
               className="inline-flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-[13px] font-medium text-green-700 hover:bg-green-100 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40 transition-colors"
             >
               <CheckCircle className="h-4 w-4" />
@@ -132,7 +228,7 @@ export default function RiderDetailPage({
           )}
           {rider.status !== "offline" && (
             <button
-              onClick={handleSetOffline}
+              onClick={() => void handleSetStatus("offline")}
               className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-[13px] font-medium text-red-600 hover:bg-red-100 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 transition-colors"
             >
               <X className="h-4 w-4" />
@@ -157,7 +253,7 @@ export default function RiderDetailPage({
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[12px] font-medium text-[var(--muted-foreground)]">Today&apos;s Deliveries</p>
-              <p className="mt-1 text-2xl font-bold tracking-tight text-[var(--foreground)]">{rider.todayDeliveries}</p>
+              <p className="mt-1 text-2xl font-bold tracking-tight text-[var(--foreground)]">{rider.today_deliveries}</p>
             </div>
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--muted)]">
               <Bike className="h-[18px] w-[18px] text-[var(--muted-foreground)]" />
@@ -168,7 +264,7 @@ export default function RiderDetailPage({
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[12px] font-medium text-[var(--muted-foreground)]">Completed Deliveries</p>
-              <p className="mt-1 text-2xl font-bold tracking-tight text-[var(--foreground)]">{rider.completedDeliveries}</p>
+              <p className="mt-1 text-2xl font-bold tracking-tight text-[var(--foreground)]">{rider.completed_deliveries}</p>
             </div>
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
               <PackageCheck className="h-[18px] w-[18px] text-green-600 dark:text-green-400" />
@@ -179,7 +275,7 @@ export default function RiderDetailPage({
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[12px] font-medium text-[var(--muted-foreground)]">Avg. Delivery Time</p>
-              <p className="mt-1 text-2xl font-bold tracking-tight text-[var(--foreground)]">{rider.averageDeliveryTime} min</p>
+              <p className="mt-1 text-2xl font-bold tracking-tight text-[var(--foreground)]">{rider.average_delivery_time} min</p>
             </div>
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
               <Clock className="h-[18px] w-[18px] text-blue-600 dark:text-blue-400" />
@@ -203,7 +299,7 @@ export default function RiderDetailPage({
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        {/* Left Column - Profile + Current Order */}
+        {/* Left Column - Profile + Current Order + History */}
         <div className="xl:col-span-2 space-y-6">
           {/* Profile Info */}
           <div className="rounded-xl border border-[var(--border)] bg-[var(--card)]">
@@ -229,7 +325,7 @@ export default function RiderDetailPage({
                   </div>
                   <div>
                     <p className="text-[12px] text-[var(--muted-foreground)]">Email</p>
-                    <p className="text-[13px] font-medium text-[var(--foreground)]">{rider.email}</p>
+                    <p className="text-[13px] font-medium text-[var(--foreground)]">{rider.email ?? "—"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -238,7 +334,7 @@ export default function RiderDetailPage({
                   </div>
                   <div>
                     <p className="text-[12px] text-[var(--muted-foreground)]">Location</p>
-                    <p className="text-[13px] font-medium text-[var(--foreground)]">{rider.location.address}</p>
+                    <p className="text-[13px] font-medium text-[var(--foreground)]">{rider.location_address ?? "—"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -258,27 +354,30 @@ export default function RiderDetailPage({
           <div className="rounded-xl border border-[var(--border)] bg-[var(--card)]">
             <div className="border-b border-[var(--border)] px-5 py-4">
               <h2 className="text-[15px] font-semibold text-[var(--foreground)]">
-                Current Orders ({rider.currentOrderIds.length})
+                Current Orders ({activeDeliveries.length})
               </h2>
             </div>
             <div className="px-5 py-4">
-              {rider.currentOrderIds.length > 0 ? (
+              {activeDeliveries.length > 0 ? (
                 <div className="space-y-3">
-                  {rider.currentOrderIds.map((orderId) => (
+                  {activeDeliveries.map((delivery) => (
                     <div
-                      key={orderId}
+                      key={delivery.id}
                       className="flex items-center gap-4 rounded-lg border border-[var(--border)] bg-[var(--muted)]/50 p-4"
                     >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
                         <Bike className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-semibold text-[var(--foreground)]">
-                          {orderId}
+                        <p className="text-[12px] font-medium text-[var(--foreground)]">
+                          {delivery.order_id}
+                        </p>
+                        <p className="text-[11px] text-[var(--muted-foreground)]">
+                          {deliveryStatusLabel(delivery.status)}
                         </p>
                       </div>
                       <Link
-                        href={`/admin/orders/${orderId}`}
+                        href={`/admin/orders/${delivery.order_id}`}
                         className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
                       >
                         View Order
@@ -297,6 +396,62 @@ export default function RiderDetailPage({
               )}
             </div>
           </div>
+
+          {/* Delivery History */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--card)]">
+            <div className="border-b border-[var(--border)] px-5 py-4">
+              <h2 className="text-[15px] font-semibold text-[var(--foreground)]">
+                Delivery History ({deliveryHistory.length})
+              </h2>
+            </div>
+            <div className="px-5 py-4">
+              {deliveryHistory.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 py-8">
+                  <PackageCheck className="h-10 w-10 text-[var(--muted-foreground)] opacity-40" />
+                  <p className="text-[13px] text-[var(--muted-foreground)]">
+                    No deliveries for this rider yet.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {deliveryHistory.slice(0, 10).map((d) => (
+                    <div
+                      key={d.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--muted)]/50 p-4"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          href={`/admin/orders/${d.order_id}`}
+                          className="text-[13px] font-semibold text-[var(--foreground)] hover:text-[var(--primary)] transition-colors"
+                        >
+                          {d.order_id}
+                        </Link>
+                        <p className="mt-1 flex items-center gap-2 text-[11px] text-[var(--muted-foreground)] truncate">
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium",
+                              deliveryStatusTone(d.status)
+                            )}
+                          >
+                            {deliveryStatusLabel(d.status)}
+                          </span>
+                          {d.delivery_location ?? d.pickup_location ?? `Order ${d.order_id}`}
+                        </p>
+                      </div>
+                      <p className="shrink-0 text-[11px] text-[var(--muted-foreground)]">
+                        {getTimeAgo(d.delivered_at ?? d.failed_at ?? d.created_at)}
+                      </p>
+                    </div>
+                  ))}
+                  {deliveryHistory.length > 10 && (
+                    <p className="text-center text-[12px] text-[var(--muted-foreground)] pt-1">
+                      +{deliveryHistory.length - 10} more deliveries
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Right Column - Location Map */}
@@ -308,7 +463,7 @@ export default function RiderDetailPage({
                 Current Location
               </h2>
               <p className="text-[12px] text-[var(--muted-foreground)]">
-                {rider.location.address}
+                {rider.location_address ?? "Location not set"}
               </p>
             </div>
             <div className="relative h-[260px] bg-[var(--muted)] mx-4 mb-4 rounded-lg overflow-hidden">
@@ -364,8 +519,12 @@ export default function RiderDetailPage({
                     <Bike className="h-4 w-4 text-white" />
                   </div>
                   <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 bg-green-400" />
-                    <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500" />
+                    {rider.status !== "offline" && (
+                      <>
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 bg-green-400" />
+                        <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500" />
+                      </>
+                    )}
                   </span>
                 </div>
                 <span className={cn(
@@ -432,7 +591,7 @@ export default function RiderDetailPage({
               )}
               {rider.status !== "available" && (
                 <button
-                  onClick={handleSetAvailable}
+                  onClick={() => void handleSetStatus("available")}
                   className="w-full inline-flex items-center gap-2.5 rounded-lg border border-green-200 px-3 py-2.5 text-[13px] font-medium text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/20 transition-colors"
                 >
                   <CheckCircle className="h-4 w-4" />
@@ -441,7 +600,7 @@ export default function RiderDetailPage({
               )}
               {rider.status !== "offline" && (
                 <button
-                  onClick={handleSetOffline}
+                  onClick={() => void handleSetStatus("offline")}
                   className="w-full inline-flex items-center gap-2.5 rounded-lg border border-red-200 px-3 py-2.5 text-[13px] font-medium text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20 transition-colors"
                 >
                   <X className="h-4 w-4" />

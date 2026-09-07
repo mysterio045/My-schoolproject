@@ -352,6 +352,39 @@ export interface CustomerListParams {
   search?: string;
 }
 
+/** Query params for `GET /api/riders`. */
+export interface RiderListParams {
+  page?: number;
+  page_size?: number;
+  status?: RiderStatus;
+  search?: string;
+}
+
+/** Payload for `POST /api/riders`. */
+export interface RiderCreatePayload {
+  name: string;
+  phone: string;
+  email?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  location_address?: string | null;
+  /** ISO date (`YYYY-MM-DD`) of when the rider joined. */
+  joined_at: string;
+  avatar?: string | null;
+}
+
+/** Payload for `PATCH /api/riders/{id}` (all fields optional). */
+export interface RiderUpdatePayload {
+  name?: string;
+  phone?: string;
+  email?: string | null;
+  status?: RiderStatus;
+  lat?: number | null;
+  lng?: number | null;
+  location_address?: string | null;
+  avatar?: string | null;
+}
+
 export interface DashboardSummary {
   total_orders: number;
   total_revenue: number;
