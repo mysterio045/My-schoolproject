@@ -28,9 +28,20 @@ from app.models.enums import RiderStatus
 class Rider(Base, PrimaryKeyMixin, TimestampMixin):
     __tablename__ = "riders"
 
+    # Auth
+    first_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(100), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    password_hash: Mapped[str] = mapped_column(String(500), nullable=False)
+
+    # Vehicle
+    vehicle_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    vehicle_plate_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Contact
     phone: Mapped[str] = mapped_column(String(50), nullable=False)
-    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    avatar: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
     # Status: available / busy / offline
     status: Mapped[RiderStatus] = mapped_column(
@@ -57,7 +68,6 @@ class Rider(Base, PrimaryKeyMixin, TimestampMixin):
     )
 
     # Profile
-    avatar: Mapped[str | None] = mapped_column(String(10), nullable=True)
     joined_at: Mapped[date] = mapped_column(Date, nullable=False)
 
     # Relationships

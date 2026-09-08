@@ -30,8 +30,47 @@ from app.schemas.delivery import DeliveryRead
 from app.models.enums import RiderStatus
 
 
+# ---------------------------------------------------------------------------
+# Auth Schemas
+# ---------------------------------------------------------------------------
+class RiderRegister(BaseSchema):
+    """Payload to register a new rider account."""
+
+    first_name: str = Field(min_length=1, max_length=100)
+    last_name: str = Field(min_length=1, max_length=100)
+    phone: str = Field(min_length=7, max_length=50)
+    email: EmailStr
+    password: str = Field(min_length=6, max_length=128)
+    vehicle_type: str | None = Field(default=None, max_length=50)
+    vehicle_plate_number: str | None = Field(default=None, max_length=50)
+
+
+class RiderLogin(BaseSchema):
+    """Payload to log in as a rider."""
+
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
+
+
+class RiderTokenResponse(BaseSchema):
+    """Response from rider login endpoint."""
+
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+
+
+class RiderAvailabilityUpdate(BaseSchema):
+    """Payload to update rider availability status."""
+
+    status: RiderStatus
+
+
+# ---------------------------------------------------------------------------
+# CRUD Schemas (admin)
+# ---------------------------------------------------------------------------
 class RiderCreate(BaseSchema):
-    """Payload to add a new rider."""
+    """Payload to add a new rider (admin)."""
 
     name: str = Field(min_length=1, max_length=255)
     phone: str = Field(min_length=7, max_length=50)
@@ -50,7 +89,7 @@ class RiderCreate(BaseSchema):
 
 
 class RiderUpdate(BaseSchema):
-    """Optional fields that can be updated on an existing rider."""
+    """Optional fields that can be updated on an existing rider (admin)."""
 
     name: str | None = Field(default=None, min_length=1, max_length=255)
     phone: str | None = Field(default=None, min_length=7, max_length=50)
@@ -78,13 +117,20 @@ class RiderLocationUpdate(BaseSchema):
     location_address: str | None = None
 
 
+# ---------------------------------------------------------------------------
+# Read Schemas
+# ---------------------------------------------------------------------------
 class RiderRead(BaseSchema):
     """Rider as returned to the client."""
 
     id: uuid.UUID
+    first_name: str
+    last_name: str
     name: str
     phone: str
-    email: EmailStr | None
+    email: EmailStr
+    vehicle_type: str | None
+    vehicle_plate_number: str | None
     status: RiderStatus
     lat: Decimal | None
     lng: Decimal | None

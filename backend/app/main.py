@@ -30,6 +30,7 @@ from app.api.routes import (
     orders,
     deliveries,
     riders,
+    rider_auth,
     notifications,
     dispatch,
     dashboard,
@@ -110,6 +111,7 @@ async def health_check():
 # riders, notifications, dispatch, dashboard) are registered here. analytics/
 # real-time come in later phases.
 app.include_router(auth.router)
+app.include_router(rider_auth.router)
 app.include_router(menu.router)
 app.include_router(customers.router)
 app.include_router(orders.router)
@@ -118,3 +120,14 @@ app.include_router(riders.router)
 app.include_router(notifications.router)
 app.include_router(dispatch.router)
 app.include_router(dashboard.router)
+
+
+# =============================================================================
+# Realtime WebSocket Channel
+# =============================================================================
+# Authenticated invalidation events (order.created, dispatch.assigned, ...).
+# The WebSocket router is registered separately so REST and WS paths coexist
+# on the same ASGI application.
+from app.api.routes.realtime import router as realtime_router
+
+app.include_router(realtime_router)

@@ -128,3 +128,79 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return admin
+
+
+# =============================================================================
+# Rider Authentication Dependency
+# =============================================================================
+async def get_current_rider(
+    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> "Rider":
+    """
+    Validates the JWT token and returns the authenticated rider.
+
+    Steps:
+      1. Decode + validate the JWT from the Authorization header.
+      2. Load the rider from the riders table using the token's `sub`.
+      3. Return the rider, or raise HTTP 401 if missing.
+
+    Args:
+        credentials: The bearer token from the Authorization header.
+        db: An async database session (so we can load the rider row).
+
+    Raises:
+        HTTPException 401: Token missing, invalid, expired, or the rider
+            does not exist.
+    """
+    from app.models.rider import Rider
+
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = credentials.credentials
+
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM],
+        )
+    except JWTError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid or expired token: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    rider_id: str | None = payload.get("sub")
+    if rider_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: missing subject",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    import uuid
+
+    try:
+        rider_uuid = uuid.UUID(rider_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: malformed subject",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    rider = await db.get(Rider, rider_uuid)
+    if rider is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Rider not found.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return rider

@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #111111;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --card: #ffffff;
+  --card-border: #f3f4f6;
+  --primary: #16a34a;
+  --primary-light: #f0fdf4;
+}
+
+.dark {
+  --background: #0f1117;
+  --foreground: #e5e7eb;
+  --muted: #9ca3af;
+  --border: #2a2d37;
+  --card: #1a1d27;
+  --card-border: #2a2d37;
+  --primary: #22c55e;
+  --primary-light: #052e16;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-light: var(--primary-light);
+  --color-card: var(--card);
+  --color-card-border: var(--card-border);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: #f9fafb;
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+}
+
+.dark body {
+  background: #0a0c13;
+}
+
+@media (min-width: 640px) {
+  body::before {
+    content: "";
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #f9fafb;
+  }
+  .dark body::before {
+    background: #0a0c13;
+  }
+  body::after {
+    content: "Rider Interface is available on mobile devices only.";
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: #374151;
+    text-align: center;
+    padding: 2rem;
+  }
+  .dark body::after {
+    color: #d1d5db;
+  }
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px white inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px #1a1d27 inset;
+}
