@@ -385,6 +385,29 @@ export interface RiderUpdatePayload {
   avatar?: string | null;
 }
 
+/** Query params for `GET /api/deliveries`. */
+export interface DeliveryListParams {
+  page?: number;
+  page_size?: number;
+  status?: DeliveryStatus;
+}
+
+/** Payload for `POST /api/dispatch/assign` and `POST /api/dispatch/nearest-rider`. */
+export interface DispatchRequestPayload {
+  order_id: string;
+}
+
+/**
+ * Response from the dispatch endpoints: the updated delivery, the assigned
+ * rider, and the backend-computed straight-line distance in km.
+ */
+export interface DispatchResult {
+  delivery: DeliveryRecord;
+  rider: RiderRecord;
+  distance_km: number;
+  message: string;
+}
+
 export interface DashboardSummary {
   total_orders: number;
   total_revenue: number;

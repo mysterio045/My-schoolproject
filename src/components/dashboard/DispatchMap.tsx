@@ -1,38 +1,115 @@
 "use client";
 
-import { MapPin, Bike, Navigation } from "lucide-react";
-import { useApp } from "@/context/AppContext";
+import { useCallback, useEffect, useState } from "react";
+import { MapPin, Bike, RefreshCw } from "lucide-react";
+import { getRiders } from "@/lib/api/riders";
+import { getDeliveries } from "@/lib/api/deliveries";
+import type { DeliveryRecord, RiderRecord } from "@/lib/types";
 
-const riderPositions = [
-  { x: 25, y: 30, status: "available" as const },
-  { x: 60, y: 20, status: "busy" as const },
-  { x: 40, y: 55, status: "available" as const },
-  { x: 75, y: 45, status: "busy" as const },
-  { x: 30, y: 70, status: "available" as const },
+const MAX_ROWS = 100;
+const IN_FLIGHT_DELIVERY_STATUSES: DeliveryRecord["status"][] = [
+  "assigned",
+  "accepted",
+  "picked_up",
+  "on_the_way",
 ];
 
-const deliveryPositions = [
-  { x: 50, y: 40 },
-  { x: 70, y: 65 },
-  { x: 20, y: 50 },
-];
+interface MapBounds {
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+}
+
+function projectPoint(
+  lat: number,
+  lng: number,
+  bounds: MapBounds
+): { x: number; y: number } {
+  const pad = 12;
+  const rangeLat = Math.max(bounds.maxLat - bounds.minLat, 1e-6);
+  const rangeLng = Math.max(bounds.maxLng - bounds.minLng, 1e-6);
+  const x = (lng - bounds.minLng) / rangeLng * (100 - 2 * pad) + pad;
+  const y = (bounds.maxLat - lat) / rangeLat * (100 - 2 * pad) + pad;
+  return { x, y };
+}
 
 export default function DispatchMap() {
-  const { riders } = useApp();
+  const [riders, setRiders] = useState<RiderRecord[]>([]);
+  const [deliveries, setDeliveries] = useState<DeliveryRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [ridersRes, deliveriesRes] = await Promise.all([
+        getRiders({ page: 1, page_size: MAX_ROWS }),
+        getDeliveries({ page: 1, page_size: MAX_ROWS }),
+      ]);
+      setRiders(ridersRes.items);
+      setDeliveries(
+        deliveriesRes.items.filter((d) =>
+          IN_FLIGHT_DELIVERY_STATUSES.includes(d.status)
+        )
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, [load]);
+
   const activeDeliveries = riders.filter((r) => r.status === "busy").length;
+  const availableRiders = riders.filter((r) => r.status === "available").length;
+  const offlineRiders = riders.filter((r) => r.status === "offline").length;
+
+  const riderMarkers = riders.filter(
+    (r) => r.lat !== null && r.lng !== null
+  );
+  const deliveryMarkers = deliveries.filter(
+    (d) => d.rider_lat !== null && d.rider_lng !== null
+  );
+
+  const coordinatePoints: { lat: number; lng: number }[] = [
+    ...riderMarkers.map((r) => ({ lat: r.lat as number, lng: r.lng as number })),
+    ...deliveryMarkers.map((d) => ({
+      lat: d.rider_lat as number,
+      lng: d.rider_lng as number,
+    })),
+  ];
+
+  const bounds: MapBounds | null =
+    coordinatePoints.length > 0
+      ? {
+          minLat: Math.min(...coordinatePoints.map((p) => p.lat)),
+          maxLat: Math.max(...coordinatePoints.map((p) => p.lat)),
+          minLng: Math.min(...coordinatePoints.map((p) => p.lng)),
+          maxLng: Math.max(...coordinatePoints.map((p) => p.lng)),
+        }
+      : null;
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4">
         <div>
-          <h2 className="text-[15px] font-semibold text-[var(--foreground)]">Live Dispatch</h2>
+          <h2 className="text-[15px] font-semibold text-[var(--foreground)]">
+            Live Dispatch
+          </h2>
           <p className="text-[12px] text-[var(--muted-foreground)]">
-            {activeDeliveries + 15} active deliveries in Dutse
+            {activeDeliveries} active deliveries · {availableRiders} available · {offlineRiders} offline
+            {" — "}
+            {loading ? "loading…" : "schematic map from real rider coordinates"}
           </p>
         </div>
-        <button className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors">
-          View Live Map
-          <Navigation className="h-3.5 w-3.5" />
+        <button
+          onClick={() => void load()}
+          className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] font-medium text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+          Refresh
         </button>
       </div>
 
@@ -73,38 +150,54 @@ export default function DispatchMap() {
         </div>
 
         {/* Rider markers */}
-        {riderPositions.map((pos, i) => (
-          <div
-            key={i}
-            className="absolute"
-            style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-          >
-            <div
-              className={`flex h-6 w-6 items-center justify-center rounded-full shadow-md ${
-                pos.status === "available"
-                  ? "bg-green-500"
-                  : pos.status === "busy"
-                  ? "bg-amber-500"
-                  : "bg-gray-400"
-              }`}
-            >
-              <Bike className="h-3 w-3 text-white" />
-            </div>
-          </div>
-        ))}
+        {!loading &&
+          bounds &&
+          riderMarkers.map((rider) => {
+            const pos = projectPoint(rider.lat as number, rider.lng as number, bounds);
+            return (
+              <div key={rider.id} className="absolute" style={{ left: `${pos.x}%`, top: `${pos.y}%` }}>
+                <div
+                  className={`flex h-6 w-6 items-center justify-center rounded-full shadow-md ${
+                    rider.status === "available"
+                      ? "bg-green-500"
+                      : rider.status === "busy"
+                      ? "bg-amber-500"
+                      : "bg-gray-400"
+                  }`}
+                >
+                  <Bike className="h-3 w-3 text-white" />
+                </div>
+              </div>
+            );
+          })}
 
         {/* Delivery markers */}
-        {deliveryPositions.map((pos, i) => (
-          <div
-            key={i}
-            className="absolute"
-            style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-          >
-            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 shadow-md">
-              <MapPin className="h-3 w-3 text-white" />
-            </div>
+        {!loading &&
+          bounds &&
+          deliveryMarkers.map((delivery) => {
+            const pos = projectPoint(
+              delivery.rider_lat as number,
+              delivery.rider_lng as number,
+              bounds
+            );
+            return (
+              <div key={delivery.id} className="absolute" style={{ left: `${pos.x}%`, top: `${pos.y}%` }}>
+                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 shadow-md">
+                  <MapPin className="h-3 w-3 text-white" />
+                </div>
+              </div>
+            );
+          })}
+
+        {!loading && !bounds && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-5 text-center">
+            <Bike className="h-8 w-8 text-[var(--muted-foreground)] opacity-30" />
+            <p className="text-[12px] text-[var(--muted-foreground)]">
+              No rider coordinates available yet — markers appear when riders
+              have a live location.
+            </p>
           </div>
-        ))}
+        )}
 
         {/* Legend */}
         <div className="absolute bottom-3 left-3 flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--card)]/90 backdrop-blur-sm px-3 py-1.5">
