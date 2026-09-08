@@ -147,6 +147,55 @@ export interface DashboardRecentNotification {
   created_at: string;
 }
 
+/** Backend notification kind (Phase 4C `NotificationType` enum). */
+export type NotificationType = "order" | "rider" | "system" | "delivery";
+
+/** Backend notification recipient kind (Phase 4C `NotificationRecipientType` enum). */
+export type NotificationRecipientType = "admin" | "customer" | "rider";
+
+/**
+ * A notification exactly as returned by the notifications API
+ * (`NotificationRead`: polymorphic `recipient_type` + `recipient_id`).
+ */
+export interface NotificationRecord {
+  id: string;
+  recipient_type: NotificationRecipientType;
+  recipient_id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  read: boolean;
+  created_at: string;
+}
+
+/** Query params for `GET /api/notifications`. */
+export interface NotificationListParams {
+  recipient_type: NotificationRecipientType;
+  recipient_id: string;
+  unread_only?: boolean;
+  page?: number;
+  page_size?: number;
+}
+
+/** Response from `GET /api/notifications/unread-count`. */
+export interface UnreadNotificationCount {
+  count: number;
+}
+
+/** Payload for `POST /api/notifications`. */
+export interface NotificationCreatePayload {
+  recipient_type: NotificationRecipientType;
+  recipient_id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+}
+
+/** Payload for `PATCH /api/notifications/{id}/read`. */
+export interface NotificationUpdatePayload {
+  read?: boolean;
+}
+
 /**
  * Backend order statuses (Phase 4B `OrderStatus` enum): the kitchen lifecycle.
  * `assigned`/`on_the_way`/`delivered` are DELIVERY statuses, never order statuses.

@@ -1,4 +1,4 @@
-export { mockOrders, mockNotifications } from "./orders";
+export { mockOrders } from "./orders";
 export { mockRiders } from "./riders";
 export { mockCustomers } from "./customers";
 export { mockMenu, mockCategories } from "./menu";
