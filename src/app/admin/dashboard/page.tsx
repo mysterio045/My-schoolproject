@@ -23,6 +23,8 @@ import { getErrorMessage } from "@/lib/api/errors";
 import type { DashboardSummary } from "@/lib/types";
 import { formatNaira, getGreeting, getTimeAgo } from "@/lib/utils";
 import { showToast } from "@/components/ui/Toast";
+import { REALTIME_EVENTS } from "@/lib/realtime/events";
+import { useRealtimeEvents, useFallbackPolling } from "@/lib/realtime/hooks";
 
 function StatCardSkeleton() {
   return (
@@ -57,6 +59,32 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
+
+  // Live dashboard: refresh when orders are created/changed, a dispatch is
+  // assigned, or a delivery moves. Debounced (slower cadence here — the
+  // dashboard is a big aggregate view).
+  useRealtimeEvents(
+    [
+      REALTIME_EVENTS.ORDER_CREATED,
+      REALTIME_EVENTS.ORDER_UPDATED,
+      REALTIME_EVENTS.DISPATCH_ASSIGNED,
+      REALTIME_EVENTS.DELIVERY_UPDATED,
+      REALTIME_EVENTS.CONNECTED,
+    ],
+    () => {
+      void load();
+    },
+    { debounceMs: 800 }
+  );
+
+  // Fallback polling while the socket is disconnected.
+  useFallbackPolling(
+    60_000,
+    () => {
+      void load();
+    },
+    []
+  );
 
   const refresh = () => {
     setLoading(true);

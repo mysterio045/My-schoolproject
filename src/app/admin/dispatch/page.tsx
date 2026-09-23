@@ -28,6 +28,8 @@ import type {
   OrderRecord,
   RiderRecord,
 } from "@/lib/types";
+import { REALTIME_EVENTS } from "@/lib/realtime/events";
+import { useRealtimeEvents, useFallbackPolling } from "@/lib/realtime/hooks";
 
 const MAX_ROWS = 100;
 
@@ -102,6 +104,32 @@ export default function DispatchPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
+
+  // Live dispatch board: an order becoming ready, a delivery moving, a rider
+  // assignment, or a rider status change all invalidate this view. Coalesced
+  // into a single refetch since a dispatch emits several events at once.
+  useRealtimeEvents(
+    [
+      REALTIME_EVENTS.ORDER_UPDATED,
+      REALTIME_EVENTS.DELIVERY_UPDATED,
+      REALTIME_EVENTS.DISPATCH_ASSIGNED,
+      REALTIME_EVENTS.RIDER_UPDATED,
+      REALTIME_EVENTS.CONNECTED,
+    ],
+    () => {
+      void load(true);
+    },
+    { debounceMs: 400 }
+  );
+
+  // Fallback polling while the socket is disconnected.
+  useFallbackPolling(
+    30_000,
+    () => {
+      void load(true);
+    },
+    []
+  );
 
   const availableRiders = useMemo(
     () => riders.filter((r) => r.status === "available"),

@@ -19,6 +19,7 @@ Rider assignment is intentionally NOT implemented here — it belongs to the
 later dispatch/rider phase.
 """
 
+import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -28,9 +29,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.delivery import Delivery
-from app.models.enums import DeliveryStatus
+from app.models.enums import DeliveryStatus, NotificationRecipientType, NotificationType
 from app.models.order import Order
 from app.schemas.delivery import DeliveryStatusUpdate
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -131,6 +134,57 @@ async def list_deliveries(
 
 
 # ---------------------------------------------------------------------------
+# Realtime invalidation helpers
+# ---------------------------------------------------------------------------
+async def _publish_delivery_updated(delivery: Delivery) -> None:
+    from app.realtime import publish
+    from app.realtime.events import DELIVERY_UPDATED
+
+    await publish(
+        DELIVERY_UPDATED,
+        entity_id=delivery.id,
+        order_id=str(delivery.order_id),
+        rider_id=str(delivery.rider_id) if delivery.rider_id else None,
+    )
+
+
+async def _notify_delivery_status_change(
+    db: AsyncSession, delivery: Delivery, new_status: DeliveryStatus
+) -> None:
+    """
+    Send the deterministic customer notification for logistics milestones.
+
+    One notification per successful transition; retries cannot duplicate it
+    because the transition itself is guarded and only succeeds once.
+    """
+    from app.services import notification_service
+
+    # "On the way" → notification to the customer (order shipped milestone).
+    if new_status == DeliveryStatus.ON_THE_WAY:
+        order_number = delivery.order.order_number if delivery.order else str(delivery.order_id)
+        await notification_service.notify(
+            db,
+            recipient_type=NotificationRecipientType.CUSTOMER,
+            recipient_id=delivery.order.customer_id,
+            type=NotificationType.ORDER,
+            title="Order On The Way",
+            message=f"Your order {order_number} is on the way.",
+        )
+
+    # "Delivered" → milestone notification to the customer.
+    if new_status == DeliveryStatus.DELIVERED:
+        order_number = delivery.order.order_number if delivery.order else str(delivery.order_id)
+        await notification_service.notify(
+            db,
+            recipient_type=NotificationRecipientType.CUSTOMER,
+            recipient_id=delivery.order.customer_id,
+            type=NotificationType.ORDER,
+            title="Order Delivered",
+            message=f"Your order {order_number} has been delivered.",
+        )
+
+
+# ---------------------------------------------------------------------------
 # Delivery status transitions
 # ---------------------------------------------------------------------------
 async def update_delivery_status(
@@ -174,4 +228,16 @@ async def update_delivery_status(
     await db.commit()
     # Re-fetch with the nested order eagerly loaded (commit expires instances,
     # and lazy access would otherwise fail during response serialization).
-    return await get_delivery_or_404(db, delivery.id)
+    delivery = await get_delivery_or_404(db, delivery.id)
+
+    # ------------------------------------------------------------------
+    # Realtime invalidation + automated customer notification (AFTER the
+    # successful commit; both are best-effort).
+    # ------------------------------------------------------------------
+    await _publish_delivery_updated(delivery)
+    try:
+        await _notify_delivery_status_change(db, delivery, new_status)
+    except Exception:
+        logger.exception("Failed to create delivery-status notification")
+
+    return delivery

@@ -26,6 +26,8 @@ import {
 import { getErrorMessage } from "@/lib/api/errors";
 import type { NotificationRecord } from "@/lib/types";
 import { getInitials, getTimeAgo, cn } from "@/lib/utils";
+import { REALTIME_EVENTS } from "@/lib/realtime/events";
+import { useRealtimeEvents, useFallbackPolling } from "@/lib/realtime/hooks";
 
 const breadcrumbMap: Record<string, string> = {
   admin: "Dashboard",
@@ -132,6 +134,28 @@ export default function Topbar() {
       void refreshUnreadCount();
     }
   };
+
+  // Live bell updates driven by realtime invalidation signals: whenever the
+  // backend creates or marks a notification (including from another tab),
+  // refetch the badge + the open list from the authoritative REST API.
+  useRealtimeEvents(
+    [REALTIME_EVENTS.NOTIFICATION_CREATED, REALTIME_EVENTS.NOTIFICATION_READ],
+    () => {
+      void refreshUnreadCount();
+      if (notifOpen) void loadNotifications();
+    },
+    { debounceMs: 250 }
+  );
+
+  // Fallback: while the socket is disconnected, poll the unread badge so the
+  // bell still reflects the server (conservative 60s cadence, admin view).
+  useFallbackPolling(
+    60_000,
+    () => {
+      void refreshUnreadCount();
+    },
+    [adminId]
+  );
 
   const handleNotifClick = async (notif: NotificationRecord) => {
     if (notif.read || markingId === notif.id) return;

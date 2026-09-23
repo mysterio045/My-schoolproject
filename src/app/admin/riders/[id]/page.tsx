@@ -26,6 +26,8 @@ import { ApiError, getErrorMessage } from "@/lib/api/errors";
 import { getRider, updateRiderStatus } from "@/lib/api/riders";
 import { showToast } from "@/components/ui/Toast";
 import type { DeliveryStatus, RiderRecord, RiderStatus } from "@/lib/types";
+import { REALTIME_EVENTS } from "@/lib/realtime/events";
+import { useRealtimeEvents, useFallbackPolling } from "@/lib/realtime/hooks";
 
 const ACTIVE_DELIVERY_STATUSES: DeliveryStatus[] = [
   "assigned",
@@ -88,6 +90,35 @@ export default function RiderDetailPage({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadRider();
   }, [loadRider]);
+
+  // Live rider profile: refresh when THIS rider changes, is assigned a
+  // delivery, or one of their deliveries moves. Others are ignored.
+  useRealtimeEvents(
+    [
+      REALTIME_EVENTS.RIDER_UPDATED,
+      REALTIME_EVENTS.DISPATCH_ASSIGNED,
+      REALTIME_EVENTS.DELIVERY_UPDATED,
+      REALTIME_EVENTS.CONNECTED,
+    ],
+    (event) => {
+      if (event.type === REALTIME_EVENTS.CONNECTED) {
+        void loadRider();
+        return;
+      }
+      const isThisRider =
+        event.entity_id === id || event.rider_id === id;
+      if (isThisRider) void loadRider();
+    },
+    { debounceMs: 300 }
+  );
+
+  useFallbackPolling(
+    30_000,
+    () => {
+      void loadRider();
+    },
+    [id]
+  );
 
   const handleSetStatus = async (status: RiderStatus) => {
     if (!rider) return;

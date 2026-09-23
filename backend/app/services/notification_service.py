@@ -16,6 +16,7 @@ multiple tables, so existence is validated here in the application layer:
     - recipient_type = rider    → must exist in riders
 """
 
+import logging
 import uuid
 
 from fastapi import HTTPException, status
@@ -24,10 +25,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.admin import AdminUser
 from app.models.customer import Customer
-from app.models.enums import NotificationRecipientType
+from app.models.enums import NotificationRecipientType, NotificationType
 from app.models.notification import Notification
 from app.models.rider import Rider
 from app.schemas.notification import NotificationCreate
+
+logger = logging.getLogger(__name__)
 
 
 async def _validate_recipient(
@@ -78,18 +81,95 @@ async def create_notification(
     """
     await _validate_recipient(db, payload.recipient_type, payload.recipient_id)
 
-    notification = Notification(
+    notification = await _insert_notification(
+        db,
         recipient_type=payload.recipient_type,
         recipient_id=payload.recipient_id,
         type=payload.type,
-        title=payload.title.strip(),
+        title=payload.title,
         message=payload.message,
+    )
+    await publish_notification_created(notification)
+    return notification
+
+
+async def _insert_notification(
+    db: AsyncSession,
+    recipient_type: NotificationRecipientType,
+    recipient_id: uuid.UUID,
+    type: NotificationType,
+    title: str,
+    message: str,
+) -> Notification:
+    """Insert a notification row in its own transaction and return it."""
+    notification = Notification(
+        recipient_type=recipient_type,
+        recipient_id=recipient_id,
+        type=type,
+        title=title.strip(),
+        message=message,
         read=False,
     )
     db.add(notification)
     await db.commit()
     await db.refresh(notification)
     return notification
+
+
+async def publish_notification_created(notification: Notification) -> None:
+    """Broadcast a ``notification.created`` invalidation event."""
+    from app.realtime import publish
+    from app.realtime.events import NOTIFICATION_CREATED
+
+    await publish(
+        NOTIFICATION_CREATED,
+        entity_id=notification.id,
+        recipient_type=str(notification.recipient_type),
+        recipient_id=str(notification.recipient_id),
+    )
+
+
+async def publish_notification_read(notification: Notification) -> None:
+    """Broadcast a ``notification.read`` invalidation event."""
+    from app.realtime import publish
+    from app.realtime.events import NOTIFICATION_READ
+
+    await publish(NOTIFICATION_READ, entity_id=notification.id)
+
+
+# ---------------------------------------------------------------------------
+# Automated notifications (called by domain services after a successful change)
+# ---------------------------------------------------------------------------
+async def notify(
+    db: AsyncSession,
+    recipient_type: NotificationRecipientType,
+    recipient_id: uuid.UUID,
+    type: NotificationType,
+    title: str,
+    message: str,
+) -> Notification | None:
+    """
+    Create an automated notification and broadcast its event.
+
+    Best-effort by contract: callers wrap this in try/except so a notification
+    failure can never roll back (or raise from) the domain change it describes.
+    """
+    notification = await _insert_notification(
+        db,
+        recipient_type=recipient_type,
+        recipient_id=recipient_id,
+        type=type,
+        title=title,
+        message=message,
+    )
+    await publish_notification_created(notification)
+    return notification
+
+
+async def get_admin_ids(db: AsyncSession) -> list[uuid.UUID]:
+    """Return every admin user id (used for admin-facing notifications)."""
+    result = await db.execute(select(AdminUser.id))
+    return [row.id for row in result.all()]
 
 
 async def list_notifications(
@@ -151,4 +231,5 @@ async def mark_notification_read(
     notification.read = read
     await db.commit()
     await db.refresh(notification)
+    await publish_notification_read(notification)
     return notification

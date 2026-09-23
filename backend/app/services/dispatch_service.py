@@ -38,6 +38,7 @@ a "no available riders" error. This prevents two dispatch requests from ever
 assigning the same rider.
 """
 
+import logging
 import math
 import uuid
 from datetime import datetime, timezone
@@ -50,9 +51,11 @@ from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.models.delivery import Delivery
-from app.models.enums import DeliveryStatus, OrderStatus, RiderStatus
+from app.models.enums import DeliveryStatus, NotificationRecipientType, NotificationType, OrderStatus, RiderStatus
 from app.models.order import Order, OrderTimeline
 from app.models.rider import Rider
+
+logger = logging.getLogger(__name__)
 
 # Mean Earth radius in kilometres (used by the Haversine formula).
 EARTH_RADIUS_KM = 6371.0
@@ -292,9 +295,84 @@ async def assign_nearest_rider(db: AsyncSession, order_id: uuid.UUID) -> dict:
     )
     rider = rider_result.scalar_one()
 
+    # ------------------------------------------------------------------
+    # Realtime invalidation + automated notifications (AFTER the
+    # successful commit; all best-effort).
+    # ------------------------------------------------------------------
+    await _publish_dispatch_events(delivery, rider)
+    try:
+        await _notify_dispatch_assign(db, delivery, rider)
+    except Exception:
+        logger.exception("Failed to create dispatch-assign notifications")
+
     return {
         "delivery": delivery,
         "rider": rider,
         "distance_km": distance_km,
         "message": "Nearest available rider assigned successfully",
     }
+
+
+# ---------------------------------------------------------------------------
+# Realtime + notification helpers
+# ---------------------------------------------------------------------------
+async def _publish_dispatch_events(delivery: Delivery, rider: Rider) -> None:
+    """
+    Broadcast the dispatch invalidation signals (all issued together so clients
+    can coalesce a single refetch).
+
+    The order entity id / number come from the freshly re-fetched delivery
+    (commit expired the original order instance).
+    """
+    from app.realtime import publish
+    from app.realtime.events import (
+        DELIVERY_UPDATED,
+        DISPATCH_ASSIGNED,
+        RIDER_UPDATED,
+    )
+
+    order = delivery.order
+    await publish(
+        DISPATCH_ASSIGNED,
+        entity_id=order.id,
+        delivery_id=str(delivery.id),
+        rider_id=str(rider.id),
+    )
+    await publish(RIDER_UPDATED, entity_id=rider.id)
+    await publish(
+        DELIVERY_UPDATED,
+        entity_id=delivery.id,
+        order_id=str(order.id),
+        rider_id=str(rider.id),
+    )
+
+
+async def _notify_dispatch_assign(
+    db: AsyncSession, delivery: Delivery, rider: Rider
+) -> None:
+    """
+    Notify the assigned rider and the customer that a rider was assigned.
+    One notification per successful dispatch; a retried dispatch cannot
+    duplicate it (the 409 guard prevents re-assignment).
+    """
+    from app.services import notification_service
+
+    order = delivery.order
+    # Rider gets a direct assignment notification.
+    await notification_service.notify(
+        db,
+        recipient_type=NotificationRecipientType.RIDER,
+        recipient_id=rider.id,
+        type=NotificationType.RIDER,
+        title="New Delivery Assigned",
+        message=f"You have been assigned to order {order.order_number}.",
+    )
+    # Customer gets the "rider assigned" milestone.
+    await notification_service.notify(
+        db,
+        recipient_type=NotificationRecipientType.CUSTOMER,
+        recipient_id=order.customer_id,
+        type=NotificationType.ORDER,
+        title="Rider Assigned",
+        message=f"Your order {order.order_number} has been assigned to a rider.",
+    )

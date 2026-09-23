@@ -5,6 +5,7 @@ import Topbar from "./Topbar";
 import ToastContainer from "@/components/ui/Toast";
 import { AppProvider } from "@/context/AppContext";
 import { useApp } from "@/context/AppContext";
+import { RealtimeProvider } from "@/context/RealtimeContext";
 import RequireAuth from "@/components/auth/RequireAuth";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +33,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <AppProvider>
       <RequireAuth>
-        <AdminShell>{children}</AdminShell>
+        <RealtimeProvider>
+          <AdminShell>{children}</AdminShell>
+        </RealtimeProvider>
       </RequireAuth>
     </AppProvider>
   );

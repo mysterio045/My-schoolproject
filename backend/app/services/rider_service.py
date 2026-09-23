@@ -35,6 +35,7 @@ from sqlalchemy.orm import selectinload
 from app.models.delivery import Delivery
 from app.models.rider import Rider
 from app.schemas.rider import RiderCreate, RiderUpdate
+from app.services.security import hash_password
 
 
 # ---------------------------------------------------------------------------
@@ -139,14 +140,29 @@ async def create_rider(db: AsyncSession, payload: RiderCreate) -> Rider:
                 detail="A rider with this email already exists.",
             )
     else:
-        email = None
+        # Not-null + RiderRead require an email; synthesize a unique
+        # RFC-2606-reserved placeholder when the admin omits one.
+        email = f"rider+{uuid.uuid4().hex[:16]}@example.com"
 
     joined_at = payload.joined_at if payload.joined_at is not None else date.today()
 
+    # The riders table requires first_name/last_name/password_hash (NOT NULL).
+    # Admin-created riders get their names derived from `name` and a random
+    # password hash (no login until a password-reset flow sets a real one).
+    import secrets
+
+    name = payload.name.strip()
+    parts = name.split(maxsplit=1)
+    first_name = parts[0]
+    last_name = parts[1] if len(parts) > 1 else parts[0]
+
     rider = Rider(
-        name=payload.name.strip(),
+        first_name=first_name,
+        last_name=last_name,
+        name=name,
         phone=payload.phone.strip(),
         email=email,
+        password_hash=hash_password(secrets.token_urlsafe(32)),
         lat=payload.lat,
         lng=payload.lng,
         location_address=payload.location_address,
@@ -193,6 +209,7 @@ async def update_rider(db: AsyncSession, rider_id: uuid.UUID, payload: RiderUpda
 
     await db.commit()
     await db.refresh(rider)
+    await _publish_rider_updated(rider)
     return rider
 
 
@@ -204,4 +221,13 @@ async def update_rider_status(
     rider.status = new_status
     await db.commit()
     await db.refresh(rider)
+    await _publish_rider_updated(rider)
     return rider
+
+
+async def _publish_rider_updated(rider: Rider) -> None:
+    """Broadcast a ``rider.updated`` invalidation event after a change."""
+    from app.realtime import publish
+    from app.realtime.events import RIDER_UPDATED
+
+    await publish(RIDER_UPDATED, entity_id=rider.id)

@@ -21,6 +21,7 @@ KEY PRINCIPLES
   delivery + customer counters either all persist or none do.
 """
 
+import logging
 import re
 import uuid
 from datetime import datetime, timezone
@@ -33,10 +34,12 @@ from sqlalchemy.orm import selectinload
 from app.config import settings
 from app.models.customer import Customer
 from app.models.delivery import Delivery
-from app.models.enums import DeliveryStatus, OrderStatus
+from app.models.enums import DeliveryStatus, NotificationRecipientType, NotificationType, OrderStatus
 from app.models.menu import MenuItem
 from app.models.order import Order, OrderItem, OrderTimeline
 from app.schemas.order import OrderCreate, OrderItemCreate, OrderStatusUpdate
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -238,10 +241,32 @@ async def create_order(db: AsyncSession, payload: OrderCreate) -> Order:
     customer.total_orders = (customer.total_orders or 0) + 1
     customer.total_spent = (customer.total_spent or Decimal("0.00")) + total
     customer.last_order_at = now
-
     await db.commit()
     await db.refresh(order)
-    return await get_order_or_404(db, order.id)
+    order = await get_order_or_404(db, order.id)
+
+    # ------------------------------------------------------------------
+    # Realtime invalidation + automated notifications (AFTER a successful
+    # commit). Both are best-effort: a failure here must never fail the
+    # order creation itself.
+    # ------------------------------------------------------------------
+    await _publish_order_created(order)
+    try:
+        from app.services import notification_service
+
+        for admin_id in await notification_service.get_admin_ids(db):
+            await notification_service.notify(
+                db,
+                recipient_type=NotificationRecipientType.ADMIN,
+                recipient_id=admin_id,
+                type=NotificationType.ORDER,
+                title="New Order Received",
+                message=f"New order {order.order_number} has been received.",
+            )
+    except Exception:
+        logger.exception("Failed to create 'new order received' notification")
+
+    return order
 
 
 # ---------------------------------------------------------------------------
@@ -281,6 +306,88 @@ async def list_orders(
 
 
 # ---------------------------------------------------------------------------
+# Realtime invalidation helpers
+# ---------------------------------------------------------------------------
+async def _publish_order_created(order: Order) -> None:
+    from app.realtime import publish
+    from app.realtime.events import ORDER_CREATED
+
+    await publish(ORDER_CREATED, entity_id=order.id)
+
+
+async def _publish_order_updated(order: Order) -> None:
+    from app.realtime import publish
+    from app.realtime.events import ORDER_UPDATED
+
+    await publish(ORDER_UPDATED, entity_id=order.id)
+
+
+async def _notify_order_status_change(
+    db: AsyncSession, order: Order, new_status: OrderStatus
+) -> None:
+    """
+    Send the deterministic, per-transition customer notification.
+
+    One notification per successful transition so retries can never produce
+    duplicates (the transition itself only succeeds once).
+    """
+    from app.services import notification_service
+
+    templates = {
+        OrderStatus.CONFIRMED: (
+            NotificationType.ORDER,
+            "Order Confirmed",
+            f"Your order {order.order_number} has been confirmed.",
+        ),
+        OrderStatus.PREPARING: (
+            NotificationType.ORDER,
+            "Order Preparing",
+            f"Your order {order.order_number} is being prepared.",
+        ),
+        OrderStatus.READY: (
+            NotificationType.ORDER,
+            "Order Ready",
+            f"Your order {order.order_number} is now ready.",
+        ),
+        OrderStatus.COMPLETED: (
+            NotificationType.ORDER,
+            "Order Completed",
+            f"Your order {order.order_number} has been completed.",
+        ),
+        OrderStatus.CANCELLED: (
+            NotificationType.ORDER,
+            "Order Cancelled",
+            f"Your order {order.order_number} was cancelled.",
+        ),
+    }
+    template = templates.get(new_status)
+    if template is None:
+        return
+
+    ntype, title, message = template
+    await notification_service.notify(
+        db,
+        recipient_type=NotificationRecipientType.CUSTOMER,
+        recipient_id=order.customer_id,
+        type=ntype,
+        title=title,
+        message=message,
+    )
+
+    # Cancellations are important for the admin too.
+    if new_status == OrderStatus.CANCELLED:
+        for admin_id in await notification_service.get_admin_ids(db):
+            await notification_service.notify(
+                db,
+                recipient_type=NotificationRecipientType.ADMIN,
+                recipient_id=admin_id,
+                type=NotificationType.ORDER,
+                title="Order Cancelled",
+                message=f"Order {order.order_number} was cancelled.",
+            )
+
+
+# ---------------------------------------------------------------------------
 # Order status transitions
 # ---------------------------------------------------------------------------
 async def update_order_status(
@@ -314,4 +421,13 @@ async def update_order_status(
     )
     await db.commit()
     await db.refresh(order)
-    return await get_order_or_404(db, order.id)
+    order = await get_order_or_404(db, order.id)
+
+    # Realtime invalidation + automated notification (AFTER the commit).
+    await _publish_order_updated(order)
+    try:
+        await _notify_order_status_change(db, order, new_status)
+    except Exception:
+        logger.exception("Failed to create order-status notification")
+
+    return order

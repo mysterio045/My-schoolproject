@@ -23,6 +23,8 @@ import { getErrorMessage } from "@/lib/api/errors";
 import { getRiders, updateRiderStatus } from "@/lib/api/riders";
 import { showToast } from "@/components/ui/Toast";
 import type { PageResult, RiderRecord, RiderStatus } from "@/lib/types";
+import { REALTIME_EVENTS } from "@/lib/realtime/events";
+import { useRealtimeEvents, useFallbackPolling } from "@/lib/realtime/hooks";
 
 const ITEMS_PER_PAGE = 8;
 // While searching, fetch a small bounded set (the backend's max page size) and
@@ -108,6 +110,30 @@ export default function RidersPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
+
+  // Live rider list: refresh when a rider changes, gets assigned a delivery,
+  // or their delivery moves. Coalesced since dispatch fires several at once.
+  useRealtimeEvents(
+    [
+      REALTIME_EVENTS.RIDER_UPDATED,
+      REALTIME_EVENTS.DELIVERY_UPDATED,
+      REALTIME_EVENTS.DISPATCH_ASSIGNED,
+      REALTIME_EVENTS.CONNECTED,
+    ],
+    () => {
+      void load();
+    },
+    { debounceMs: 400 }
+  );
+
+  // Fallback polling while the socket is disconnected.
+  useFallbackPolling(
+    30_000,
+    () => {
+      void load();
+    },
+    []
+  );
 
   const rows = useMemo(() => {
     if (isSearching) {

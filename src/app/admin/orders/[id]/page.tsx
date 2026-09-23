@@ -27,6 +27,8 @@ import type {
   OrderRecord,
   RiderRecord,
 } from "@/lib/types";
+import { REALTIME_EVENTS } from "@/lib/realtime/events";
+import { useRealtimeEvents, useFallbackPolling } from "@/lib/realtime/hooks";
 
 const lifecycleSteps: { status: string; label: string; icon: React.ElementType }[] = [
   { status: "pending", label: "Pending", icon: Clock },
@@ -103,6 +105,39 @@ export default function OrderDetailPage({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
+
+  // Live updates for THIS order: refetch when the order itself changes, when
+  // it is dispatched, or when its delivery moves. Other orders are ignored so
+  // the detail view never over-fetches.
+  useRealtimeEvents(
+    [
+      REALTIME_EVENTS.ORDER_UPDATED,
+      REALTIME_EVENTS.DISPATCH_ASSIGNED,
+      REALTIME_EVENTS.DELIVERY_UPDATED,
+      REALTIME_EVENTS.CONNECTED,
+    ],
+    (event) => {
+      if (event.type === REALTIME_EVENTS.CONNECTED) {
+        void load();
+        return;
+      }
+      const isThisOrder =
+        event.entity_id === id ||
+        event.order_id === id ||
+        (event.type === REALTIME_EVENTS.DELIVERY_UPDATED &&
+          event.delivery_id === order?.id);
+      if (isThisOrder) void load();
+    },
+    { debounceMs: 300 }
+  );
+
+  useFallbackPolling(
+    30_000,
+    () => {
+      void load();
+    },
+    [id]
+  );
 
   if (loading && !order) {
     return (

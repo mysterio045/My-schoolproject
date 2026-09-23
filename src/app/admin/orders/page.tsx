@@ -24,6 +24,8 @@ import {
   canCancelOrder,
 } from "@/lib/order-status";
 import type { BackendOrderStatus, OrderRecord, PageResult } from "@/lib/types";
+import { REALTIME_EVENTS } from "@/lib/realtime/events";
+import { useRealtimeEvents, useFallbackPolling } from "@/lib/realtime/hooks";
 
 type FilterValue = "all" | BackendOrderStatus;
 
@@ -86,6 +88,29 @@ export default function OrdersPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadOrders();
   }, [loadOrders]);
+
+  // Live updates: refetch the list when the backend reports an order was
+  // created or changed. Bursts are coalesced (debounce) to avoid over-fetch.
+  useRealtimeEvents(
+    [
+      REALTIME_EVENTS.ORDER_CREATED,
+      REALTIME_EVENTS.ORDER_UPDATED,
+      REALTIME_EVENTS.CONNECTED,
+    ],
+    () => {
+      void loadOrders();
+    },
+    { debounceMs: 400 }
+  );
+
+  // Fallback polling while the socket is disconnected.
+  useFallbackPolling(
+    30_000,
+    () => {
+      void loadOrders();
+    },
+    []
+  );
 
   const refresh = () => {
     setLoading(true);
