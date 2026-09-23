@@ -73,16 +73,23 @@ app = FastAPI(
 # =============================================================================
 # CORS Configuration
 # =============================================================================
-# Allows the Next.js frontend (running on a different port) to access the API.
-# In production, the frontend and API may share the same domain.
+# Allows the Next.js frontends to access the API from approved origins.
+
+cors_origins = list(settings.cors_origins_list)
+
+# Rider Interface production frontend
+rider_production_origin = "https://rider-interface.vercel.app"
+
+if rider_production_origin not in cors_origins:
+    cors_origins.append(rider_production_origin)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,   # e.g. ["http://localhost:3000"]
-    allow_credentials=True,                      # Allow cookies/auth headers
-    allow_methods=["*"],                         # Allow all HTTP methods
-    allow_headers=["*"],                         # Allow all headers
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-
 
 # =============================================================================
 # Health Check Endpoint
